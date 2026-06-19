@@ -58,6 +58,9 @@ export interface ModeSettings {
   subregion: string | null // when set, restricts within a region
   includeDisputed: boolean
   tier1Only: boolean
+  // Explore-only: what the hover tooltip reveals. Both default on.
+  hoverName: boolean
+  hoverCapital: boolean
 }
 
 export interface AppSettings {

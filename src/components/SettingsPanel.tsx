@@ -132,6 +132,32 @@ export default function SettingsPanel({
           </>
         )}
 
+        {/* Explore-only: what the hover tooltip reveals */}
+        {!isGuess && (
+          <section className="set-group">
+            <label className="set-label">Show on hover</label>
+            <div className="chips">
+              <button
+                className={`chip ${settings.hoverName ? 'on' : ''}`}
+                onClick={() => onChange({ hoverName: !settings.hoverName })}
+              >
+                Country name
+              </button>
+              <button
+                className={`chip ${settings.hoverCapital ? 'on' : ''}`}
+                onClick={() => onChange({ hoverCapital: !settings.hoverCapital })}
+              >
+                Capital
+              </button>
+            </div>
+            {!settings.hoverName && !settings.hoverCapital && (
+              <p className="muted small" style={{ marginTop: 8 }}>
+                Hovering shows nothing — enable one to see a tooltip.
+              </p>
+            )}
+          </section>
+        )}
+
         {/* Shared: the filters that define the active country set */}
         <section className="set-group">
           <label className="set-label">

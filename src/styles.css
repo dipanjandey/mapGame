@@ -186,6 +186,13 @@ button {
   z-index: 50;
   white-space: nowrap;
 }
+.map-tooltip .tt-name {
+  font-weight: 600;
+}
+.map-tooltip .tt-capital {
+  color: var(--muted);
+  font-size: 11px;
+}
 .map-hint {
   position: absolute;
   bottom: 14px;

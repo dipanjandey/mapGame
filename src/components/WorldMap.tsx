@@ -30,6 +30,9 @@ interface WorldMapProps {
   highlightCca3?: string | null
   /** cca3 of the currently selected country (explore / pick). */
   selectedCca3?: string | null
+  /** Explore hover tooltip: show the country name / capital. */
+  hoverName: boolean
+  hoverCapital: boolean
   position: Position
   onPositionChange: (p: Position) => void
 }
@@ -44,10 +47,17 @@ export default function WorldMap({
   playableIds,
   highlightCca3,
   selectedCca3,
+  hoverName,
+  hoverCapital,
   position,
   onPositionChange,
 }: WorldMapProps) {
-  const [hover, setHover] = useState<{ x: number; y: number; name: string } | null>(null)
+  const [hover, setHover] = useState<{
+    x: number
+    y: number
+    name: string
+    capital: string | null
+  } | null>(null)
 
   // Adaptive resolution: start with 110m, upgrade to 50m (and keep it) once
   // the user zooms past the threshold so country shapes stay accurate up close.
@@ -83,8 +93,12 @@ export default function WorldMap({
     return { inSet, isTarget, isSelected, fill, clickable }
   }
 
+  // Hover tooltip only appears in explore mode, and only if at least one of
+  // the hover-info toggles is on.
+  const hoverEnabled = showNames && (hoverName || hoverCapital)
   const enter = (e: { clientX: number; clientY: number }, c: Country) => {
-    if (showNames) setHover({ x: e.clientX, y: e.clientY, name: c.name })
+    if (hoverEnabled)
+      setHover({ x: e.clientX, y: e.clientY, name: c.name, capital: c.primaryCapital })
   }
   const move = (e: { clientX: number; clientY: number }) =>
     setHover((h) => (h ? { ...h, x: e.clientX, y: e.clientY } : h))
@@ -191,7 +205,10 @@ export default function WorldMap({
 
       {hover && (
         <div className="map-tooltip" style={{ left: hover.x + 12, top: hover.y + 12 }}>
-          {hover.name}
+          {hoverName && <div className="tt-name">{hover.name}</div>}
+          {hoverCapital && (
+            <div className="tt-capital">{hover.capital ?? 'No capital'}</div>
+          )}
         </div>
       )}
     </div>

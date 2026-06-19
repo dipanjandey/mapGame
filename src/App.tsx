@@ -17,6 +17,8 @@ const baseMode: ModeSettings = {
   subregion: null,
   includeDisputed: true,
   tier1Only: false,
+  hoverName: true,
+  hoverCapital: true,
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -51,7 +53,12 @@ export default function App() {
   const [target, setTarget] = useState<Country | null>(null) // active guess target
 
   const mode = settings.mode
-  const active = settings.perMode[mode]
+  // Spread over baseMode so settings persisted before a field existed (e.g.
+  // hoverName/hoverCapital) fall back to their defaults instead of undefined.
+  const active = useMemo(
+    () => ({ ...baseMode, ...settings.perMode[mode] }),
+    [settings.perMode, mode],
+  )
 
   const pool = useMemo(() => playableSet(active), [active])
   const playableIds = useMemo(() => new Set(pool.map((c) => c.cca3)), [pool])
@@ -227,6 +234,8 @@ export default function App() {
             selectedCca3={
               mode === 'explore' ? selected?.cca3 : mode === 'guess-pick' ? target?.cca3 : null
             }
+            hoverName={active.hoverName}
+            hoverCapital={active.hoverCapital}
             position={position}
             onPositionChange={setPosition}
           />
