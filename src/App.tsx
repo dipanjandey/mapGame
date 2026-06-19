@@ -225,7 +225,7 @@ export default function App() {
       </header>
 
       <main className="layout">
-        <div className="map-col">
+        <div className={`map-col${showSidePanel ? ' panel-open' : ''}`}>
           <WorldMap
             mode={mode}
             onPick={handlePick}

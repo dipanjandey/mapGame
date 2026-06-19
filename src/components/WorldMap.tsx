@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ComposableMap,
   Geographies,
@@ -72,6 +72,18 @@ export default function WorldMap({
     }
   }, [position.zoom, hiResLoaded])
 
+  // Touch devices can't fire mouseleave, so rsm's internal hover state sticks
+  // after a tap (the tapped country keeps the white hover fill, masking its
+  // selected colour). Detect real hover capability and drop hover behaviour
+  // entirely when it's absent.
+  const canHover = useMemo(
+    () =>
+      typeof window === 'undefined' ||
+      !window.matchMedia ||
+      window.matchMedia('(hover: hover)').matches,
+    [],
+  )
+
   // Mode-derived behaviour (see the dependency table in the README).
   const masked = mode === 'guess-prompted'
   const showNames = mode === 'explore'
@@ -95,7 +107,7 @@ export default function WorldMap({
 
   // Hover tooltip only appears in explore mode, and only if at least one of
   // the hover-info toggles is on.
-  const hoverEnabled = showNames && (hoverName || hoverCapital)
+  const hoverEnabled = canHover && showNames && (hoverName || hoverCapital)
   const enter = (e: { clientX: number; clientY: number }, c: Country) => {
     if (hoverEnabled)
       setHover({ x: e.clientX, y: e.clientY, name: c.name, capital: c.primaryCapital })
@@ -139,6 +151,15 @@ export default function WorldMap({
                   )
                 }
                 const { inSet, isTarget, isSelected, fill, clickable } = resolve(country)
+                const defaultStyle = {
+                  fill,
+                  stroke: isTarget ? '#fff' : STROKE,
+                  strokeWidth: isTarget ? 1.3 : 0.3,
+                  strokeDasharray: country.disputed && inSet ? '2 1.5' : undefined,
+                  outline: 'none',
+                  opacity: inSet ? 1 : 0.4,
+                  transition: 'fill 120ms, opacity 120ms',
+                }
                 return (
                   <Geography
                     key={geo.rsmKey}
@@ -148,23 +169,19 @@ export default function WorldMap({
                     onMouseMove={move}
                     onMouseLeave={leave}
                     style={{
-                      default: {
-                        fill,
-                        stroke: isTarget ? '#fff' : STROKE,
-                        strokeWidth: isTarget ? 1.3 : 0.3,
-                        strokeDasharray: country.disputed && inSet ? '2 1.5' : undefined,
-                        outline: 'none',
-                        opacity: inSet ? 1 : 0.4,
-                        transition: 'fill 120ms, opacity 120ms',
-                      },
-                      hover: {
-                        fill: clickable ? (masked ? '#94a3b8' : '#f8fafc') : fill,
-                        stroke: isTarget ? '#fff' : clickable ? '#fff' : STROKE,
-                        strokeWidth: clickable ? 0.5 : 0.3,
-                        outline: 'none',
-                        opacity: inSet ? 1 : 0.4,
-                        cursor: clickable ? 'pointer' : 'default',
-                      },
+                      default: defaultStyle,
+                      // On touch, fall back to the default style so the hover
+                      // fill can't get stuck after a tap.
+                      hover: canHover
+                        ? {
+                            fill: clickable ? (masked ? '#94a3b8' : '#f8fafc') : fill,
+                            stroke: isTarget ? '#fff' : clickable ? '#fff' : STROKE,
+                            strokeWidth: clickable ? 0.5 : 0.3,
+                            outline: 'none',
+                            opacity: inSet ? 1 : 0.4,
+                            cursor: clickable ? 'pointer' : 'default',
+                          }
+                        : defaultStyle,
                       pressed: {
                         fill: isSelected || clickable ? '#fbbf24' : fill,
                         outline: 'none',

@@ -640,6 +640,11 @@ button {
     flex: 1 1 55%;
     min-height: 240px;
   }
+  /* Once a country is selected the panel below carries the prompt, so the
+     overlaid map hint is redundant and crowds the small map. */
+  .map-col.panel-open .map-hint {
+    display: none;
+  }
   .side {
     width: 100%;
     flex: 1 1 45%;
