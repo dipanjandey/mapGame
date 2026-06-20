@@ -20,6 +20,8 @@ const baseMode: ModeSettings = {
   hoverName: true,
   hoverCapital: true,
   markReviewed: false,
+  fillBlanks: false,
+  revealPercent: 40,
 }
 
 const DEFAULT_SETTINGS: AppSettings = {

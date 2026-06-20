@@ -64,6 +64,11 @@ export interface ModeSettings {
   // Explore-only: clicking a country marks it reviewed (white) instead of
   // just opening details. In-memory only — not persisted across sessions.
   markReviewed: boolean
+  // Guess-only: use fill-in-the-blanks for both country & capital instead of
+  // multiple choice / spelling. revealPercent (0=hard .. 80=very easy) sets
+  // how many letters are pre-filled.
+  fillBlanks: boolean
+  revealPercent: number
 }
 
 export interface AppSettings {

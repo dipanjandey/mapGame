@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import type { Country, ModeSettings } from '../lib/types'
 import { buildCountryOptions, buildCapitalOptions } from '../lib/distractors'
-import QuestionBlock, { type QuestionResult } from './QuestionBlock'
+import QuestionBlock, { type AnswerFormat, type QuestionResult } from './QuestionBlock'
 
 interface GuessPanelProps {
   target: Country
@@ -21,10 +21,23 @@ export default function GuessPanel({
   onRoundComplete,
   onNext,
 }: GuessPanelProps) {
-  // Build options once per target.
+  // Answer format per question: blanks overrides everything; else 0 -> spell,
+  // 2..4 -> multiple choice.
+  const countryFormat: AnswerFormat = settings.fillBlanks
+    ? 'blanks'
+    : settings.countryOptions === 0
+      ? 'spell'
+      : 'mc'
+  const capitalFormat: AnswerFormat = settings.fillBlanks
+    ? 'blanks'
+    : settings.capitalOptions === 0
+      ? 'spell'
+      : 'mc'
+
+  // Build multiple-choice options only when that format is actually used.
   const countryOptions = useMemo(
     () =>
-      settings.countryOptions === 0
+      countryFormat !== 'mc'
         ? []
         : buildCountryOptions(
             target,
@@ -32,12 +45,12 @@ export default function GuessPanel({
             settings.difficulty,
             settings.countryOptions,
           ).map((c) => c.name),
-    [target, pool, settings.countryOptions, settings.difficulty],
+    [countryFormat, target, pool, settings.countryOptions, settings.difficulty],
   )
 
   const capitalOptions = useMemo(
     () =>
-      settings.capitalOptions === 0
+      capitalFormat !== 'mc'
         ? []
         : buildCapitalOptions(
             target,
@@ -45,7 +58,7 @@ export default function GuessPanel({
             settings.difficulty,
             settings.capitalOptions,
           ),
-    [target, pool, settings.capitalOptions, settings.difficulty],
+    [capitalFormat, target, pool, settings.capitalOptions, settings.difficulty],
   )
 
   const [nameRes, setNameRes] = useState<QuestionResult | null>(null)
@@ -79,21 +92,25 @@ export default function GuessPanel({
       </div>
 
       <QuestionBlock
-        key={`name-${target.cca3}`}
+        key={`name-${target.cca3}-${countryFormat}-${settings.revealPercent}`}
         label="Country name"
         answer={target.name}
         aliases={target.nameAliases}
+        format={countryFormat}
         options={countryOptions}
+        revealPercent={settings.revealPercent}
         onCommit={setNameRes}
         autoFocus
       />
 
       <QuestionBlock
-        key={`cap-${target.cca3}`}
+        key={`cap-${target.cca3}-${capitalFormat}-${settings.revealPercent}`}
         label={`Capital of ${prompted && !nameRes ? '…' : target.name}`}
         answer={target.primaryCapital ?? ''}
         aliases={target.capitalAliases}
+        format={capitalFormat}
         options={capitalOptions}
+        revealPercent={settings.revealPercent}
         onCommit={setCapRes}
       />
 

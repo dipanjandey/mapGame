@@ -430,6 +430,61 @@ button {
   outline: 2px solid var(--accent);
   border-color: var(--accent);
 }
+
+/* ---------- Fill-in-the-blanks ---------- */
+.blanks {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+.blank-word {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 3px 2px;
+}
+.blank-box {
+  width: 24px;
+  height: 30px;
+  text-align: center;
+  text-transform: uppercase;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-bottom: 2px solid var(--accent);
+  border-radius: 5px;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+  padding: 0;
+}
+.blank-box:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+.blank-box.ok {
+  border-color: var(--ok);
+  color: #bbf7d0;
+}
+.blank-box.no {
+  border-color: var(--no);
+  color: #fecaca;
+}
+.blank-fixed {
+  min-width: 18px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.blank-space {
+  width: 14px;
+}
+
 .verdict {
   margin-top: 8px;
   font-size: 13px;
@@ -589,6 +644,18 @@ button {
   padding: 10px;
   border-radius: 8px;
   font-size: 14px;
+}
+.slider {
+  width: 100%;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.slider-ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
 }
 .set-group.row {
   display: flex;

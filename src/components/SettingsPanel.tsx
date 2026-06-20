@@ -90,49 +90,92 @@ export default function SettingsPanel({
         {isGuess && (
           <>
             <section className="set-group">
-              <label className="set-label"># options — country</label>
+              <label className="set-label">Answer format</label>
               <div className="seg">
-                {OPTION_VALUES.map((v) => (
-                  <button
-                    key={v}
-                    className={`seg-btn ${settings.countryOptions === v ? 'on' : ''}`}
-                    onClick={() => onChange({ countryOptions: v })}
-                  >
-                    {v === 0 ? 'Spell' : v}
-                  </button>
-                ))}
+                <button
+                  className={`seg-btn ${!settings.fillBlanks ? 'on' : ''}`}
+                  onClick={() => onChange({ fillBlanks: false })}
+                >
+                  Multiple choice
+                </button>
+                <button
+                  className={`seg-btn ${settings.fillBlanks ? 'on' : ''}`}
+                  onClick={() => onChange({ fillBlanks: true })}
+                >
+                  Fill in the blanks
+                </button>
               </div>
             </section>
 
-            <section className="set-group">
-              <label className="set-label"># options — capital</label>
-              <div className="seg">
-                {OPTION_VALUES.map((v) => (
-                  <button
-                    key={v}
-                    className={`seg-btn ${settings.capitalOptions === v ? 'on' : ''}`}
-                    onClick={() => onChange({ capitalOptions: v })}
-                  >
-                    {v === 0 ? 'Spell' : v}
-                  </button>
-                ))}
-              </div>
-            </section>
+            {settings.fillBlanks ? (
+              <section className="set-group">
+                <label className="set-label">
+                  Letters revealed — {settings.revealPercent}%
+                </label>
+                <input
+                  type="range"
+                  className="slider"
+                  min={0}
+                  max={80}
+                  step={5}
+                  value={settings.revealPercent}
+                  onChange={(e) =>
+                    onChange({ revealPercent: Number(e.target.value) })
+                  }
+                />
+                <div className="slider-ends">
+                  <span>0% · hard</span>
+                  <span>80% · very easy</span>
+                </div>
+              </section>
+            ) : (
+              <>
+                <section className="set-group">
+                  <label className="set-label"># options — country</label>
+                  <div className="seg">
+                    {OPTION_VALUES.map((v) => (
+                      <button
+                        key={v}
+                        className={`seg-btn ${settings.countryOptions === v ? 'on' : ''}`}
+                        onClick={() => onChange({ countryOptions: v })}
+                      >
+                        {v === 0 ? 'Spell' : v}
+                      </button>
+                    ))}
+                  </div>
+                </section>
 
-            <section className="set-group">
-              <label className="set-label">Difficulty (distractor pool)</label>
-              <div className="seg">
-                {DIFFICULTIES.map((d) => (
-                  <button
-                    key={d}
-                    className={`seg-btn ${settings.difficulty === d ? 'on' : ''}`}
-                    onClick={() => onChange({ difficulty: d })}
-                  >
-                    {d}
-                  </button>
-                ))}
-              </div>
-            </section>
+                <section className="set-group">
+                  <label className="set-label"># options — capital</label>
+                  <div className="seg">
+                    {OPTION_VALUES.map((v) => (
+                      <button
+                        key={v}
+                        className={`seg-btn ${settings.capitalOptions === v ? 'on' : ''}`}
+                        onClick={() => onChange({ capitalOptions: v })}
+                      >
+                        {v === 0 ? 'Spell' : v}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="set-group">
+                  <label className="set-label">Difficulty (distractor pool)</label>
+                  <div className="seg">
+                    {DIFFICULTIES.map((d) => (
+                      <button
+                        key={d}
+                        className={`seg-btn ${settings.difficulty === d ? 'on' : ''}`}
+                        onClick={() => onChange({ difficulty: d })}
+                      >
+                        {d}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              </>
+            )}
           </>
         )}
 
