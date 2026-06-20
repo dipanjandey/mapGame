@@ -1,14 +1,23 @@
 import type { Country } from '../lib/types'
-import { REGION_COLORS } from '../lib/countries'
+import { regionPalette } from '../lib/countries'
 
 const fmt = (n: number | null | undefined) =>
   n == null ? '—' : n.toLocaleString('en-US')
 
 export default function DetailsPanel({
   country,
+  cvdPalette = false,
+  tracking = false,
+  reviewed = false,
+  onToggleReviewed,
   onClose,
 }: {
   country: Country
+  cvdPalette?: boolean
+  /** Reviewed-tracking mode is on: show the mark-reviewed toggle. */
+  tracking?: boolean
+  reviewed?: boolean
+  onToggleReviewed?: () => void
   onClose: () => void
 }) {
   return (
@@ -32,12 +41,21 @@ export default function DetailsPanel({
           <p className="official">{country.officialName}</p>
           <span
             className="region-chip"
-            style={{ background: REGION_COLORS[country.region] }}
+            style={{ background: regionPalette(cvdPalette)[country.region] }}
           >
             {country.region} · {country.subregion}
           </span>
         </div>
       </div>
+
+      {tracking && (
+        <button
+          className={`review-toggle${reviewed ? ' on' : ''}`}
+          onClick={onToggleReviewed}
+        >
+          {reviewed ? '✓ Reviewed — tap to unmark' : 'Mark as reviewed'}
+        </button>
+      )}
 
       <section>
         <h3>Capital{country.capital.length > 1 ? 's' : ''}</h3>

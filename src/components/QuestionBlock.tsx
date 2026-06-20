@@ -65,6 +65,23 @@ export default function QuestionBlock({
     if (format === 'blanks') blankRefs.current[0]?.focus()
   }, [autoFocus, format, answer])
 
+  // Keyboard shortcut: number keys 1–9 pick a multiple-choice option.
+  useEffect(() => {
+    if (format !== 'mc' || committed) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key >= '1' && e.key <= '9') {
+        const idx = Number(e.key) - 1
+        if (idx < options.length) {
+          const opt = options[idx]
+          setCommitted({ value: opt, correct: opt === answer, close: false })
+          onCommit({ correct: opt === answer, close: false })
+        }
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [format, committed, options, answer, onCommit])
+
   const commit = (value: string, correct: boolean, close: boolean) => {
     if (committed) return
     setCommitted({ value, correct, close })
@@ -184,7 +201,7 @@ export default function QuestionBlock({
 
       {format === 'mc' && (
         <div className="options">
-          {options.map((opt) => {
+          {options.map((opt, i) => {
             let cls = 'option'
             if (committed) {
               const isAnswer = opt === answer
@@ -200,6 +217,9 @@ export default function QuestionBlock({
                 disabled={!!committed}
                 onClick={() => commit(opt, opt === answer, false)}
               >
+                <span className="opt-key" aria-hidden>
+                  {i + 1}
+                </span>
                 {opt}
               </button>
             )

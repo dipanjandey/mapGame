@@ -8,6 +8,11 @@ Deployed on Vercel from GitHub (`main` branch auto-deploys).
 > This README is the handoff doc. It is meant to be complete enough to pick up new tasks
 > in a fresh thread or with another agent. The original spec is
 > [`_instructions/20260619/BUILD_NOTES.md`](_instructions/20260619/BUILD_NOTES.md).
+>
+> A 2026-06-20 gameplay/UX pass (top-bar mode switcher, zoom-independent locator ring,
+> reviewed-tracking redesign, colour-blind palette, first-run onboarding, end-of-round
+> summary, guess-question gating, skip/keyboard shortcuts, region auto-fit, country search)
+> is documented in [`_instructions/20260620/UX_REVIEW.md`](_instructions/20260620/UX_REVIEW.md).
 
 ## Run
 
@@ -114,8 +119,9 @@ filtered-out ones are dimmed (opacity 0.4) and inert. Mode then decides hover/co
 
 - **Explore** — study mode. Click an active country → details panel. Selecting does **not**
   recenter/zoom the map (kept stable on purpose); it only changes the highlight.
-- **Guess · prompted** — a random active country is highlighted in white and the map is
-  masked grey (so region isn't given away); auto-zooms to it. Name it + its capital.
+- **Guess · prompted** — a random active country gets a light fill + a pulsing locator ring
+  and the map is masked grey (so region isn't given away); auto-zooms to it. Name it + its
+  capital. The capital question is gated behind the country answer (no spoilers).
 - **Guess · pick on map** — click an active country/dot (names hidden on hover), then name
   it + its capital.
 
@@ -132,7 +138,8 @@ filtered-out ones are dimmed (opacity 0.4) and inert. Mode then decides hover/co
 | `tier1Only` | bool | false | all | "common countries only" |
 | `hoverName` | bool | true | explore | hover tooltip shows country name |
 | `hoverCapital` | bool | true | explore | hover tooltip shows capital |
-| `markReviewed` | bool | false | explore | click marks reviewed (white) — see below |
+| `markReviewed` | bool | false | explore | enable reviewed tracking (mark via details panel) — see below |
+| `hideReviewed` | bool | false | explore | hide reviewed countries to focus on what's left |
 | `fillBlanks` | bool | false | guess | answer format: blanks vs MC/spell |
 | `revealPercent` | number 0–80 | 40 | guess (blanks) | % of letters pre-revealed |
 
@@ -190,16 +197,16 @@ counts correct only if **both** sub-answers are correct. The scoreboard is hidde
   Geography hover style **falls back to the default** (otherwise rsm's internal hover sticks
   after a tap and a selected country gets stuck white); the hover tooltip is disabled too.
 
-### Explore "mark reviewed" mode (`markReviewed`)
+### Explore "track reviewed" mode (`markReviewed`)
 
-In-memory only (a `Set<string>` of cca3 in `App.tsx` — resets on reload, **not persisted**,
-by design). When on, clicking a country **toggles it white** (reviewed) and opens its
-details; clicking a reviewed country un-marks it and closes details. Reviewed-white takes
-visual priority over the selected-amber (instant feedback), and the open country gets an
-**amber outline** so you can still tell which panel is showing. Hover highlight in this mode
-is amber-tinted so it doesn't read as "reviewed". A **"Clear reviewed (N)"** button resets all.
-Trade-off: re-opening a reviewed country's details isn't possible without un-marking (it's a
-literal toggle).
+Opt-in from the explore settings. Clicking a country just **opens its details** (with the
+locator ring), so any country can be re-opened freely; the details panel carries a
+**"Mark as reviewed"** toggle. Reviewed countries **fade (dimmed) and get a cyan ✓ badge**
+so the un-reviewed ones stand out, and a **"Reviewed N / 198"** counter shows on the map.
+The reviewed set is **persisted** (`wgt.reviewed`, stored as a `string[]`, used as a `Set`);
+**"Clear reviewed (N)"** empties it. A **"Hide reviewed"** toggle (`hideReviewed`) removes
+reviewed countries from view to focus on what's left. Selection/target are encoded by an
+outline + the locator ring (never a fill swap), so nothing collides with the region colours.
 
 ## Persistence
 
@@ -208,9 +215,12 @@ literal toggle).
 
 - `wgt.settings.v2` — `AppSettings` (mode + per-mode settings).
 - `wgt.stats` — `Stats` (score/streak/accuracy).
+- `wgt.reviewed` — `string[]` of reviewed cca3 (explore tracking; used as a `Set`).
+- `wgt.cvd` — colour-blind-friendly map palette on/off.
+- `wgt.onboarded` — first-run welcome modal dismissed.
 
-**In-memory only** (reset on reload): `selected`, `target`, map `position`, `reviewed` set,
-`settingsOpen`.
+**In-memory only** (reset on reload): `selected`, `target`, map `position`, the current
+guess `round`, `settingsOpen`.
 
 ## Responsive / mobile
 

@@ -20,6 +20,7 @@ const baseMode: ModeSettings = {
   hoverName: true,
   hoverCapital: true,
   markReviewed: false,
+  hideReviewed: false,
   fillBlanks: false,
   revealPercent: 40,
 }
@@ -41,7 +42,59 @@ const DEFAULT_STATS: Stats = {
   totalCorrect: 0,
 }
 
-const HOME = { coordinates: HOME_CENTER, zoom: 1 }
+const ROUND_SIZE = 10 // questions per "round" before the summary pops
+
+const MODE_TABS: { id: GameMode; label: string; title: string }[] = [
+  { id: 'explore', label: 'Explore', title: 'Explore — study countries on the map' },
+  { id: 'guess-pick', label: 'Pick', title: 'Guess · pick a country on the map, then name it' },
+  {
+    id: 'guess-prompted',
+    label: 'Prompted',
+    title: 'Guess · a country is highlighted — name it and its capital',
+  },
+]
+
+// Narrow viewports letterbox the wide map into a thin strip; start a touch more
+// zoomed-in there so countries are big enough to read and tap (see "Reset view").
+const isNarrowViewport = () =>
+  typeof window !== 'undefined' &&
+  !!window.matchMedia &&
+  window.matchMedia('(max-width: 820px)').matches
+
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' &&
+  !!window.matchMedia &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+const homeFor = (narrow: boolean) => ({
+  coordinates: HOME_CENTER,
+  zoom: narrow ? 1.6 : 1,
+})
+
+// Approximate a ZoomableGroup position that frames a set of countries (from
+// their centroids) — used to auto-fit Explore to a region/subregion filter.
+// "Reset view" returns to the world home.
+function fitToCountries(list: Country[]) {
+  if (list.length === 0) return null
+  let minLat = 90,
+    maxLat = -90,
+    minLng = 180,
+    maxLng = -180
+  for (const c of list) {
+    const [lat, lng] = c.latlng
+    if (lat < minLat) minLat = lat
+    if (lat > maxLat) maxLat = lat
+    if (lng < minLng) minLng = lng
+    if (lng > maxLng) maxLng = lng
+  }
+  const spanLng = Math.max(maxLng - minLng, 1)
+  const spanLat = Math.max(maxLat - minLat, 1)
+  const zoom = Math.min(7, Math.max(1.3, Math.min(360 / spanLng, 145 / spanLat) * 0.85))
+  return {
+    coordinates: [(minLng + maxLng) / 2, (minLat + maxLat) / 2] as [number, number],
+    zoom: +zoom.toFixed(2),
+  }
+}
 
 export default function App() {
   const [settings, setSettings] = usePersisted<AppSettings>(
@@ -49,18 +102,28 @@ export default function App() {
     DEFAULT_SETTINGS,
   )
   const [stats, setStats] = usePersisted<Stats>('wgt.stats', DEFAULT_STATS)
+  // Reviewed set is persisted (stored as an array; used as a Set).
+  const [reviewedList, setReviewedList] = usePersisted<string[]>('wgt.reviewed', [])
+  const [cvdPalette, setCvdPalette] = usePersisted<boolean>('wgt.cvd', false)
+  const [onboarded, setOnboarded] = usePersisted<boolean>('wgt.onboarded', false)
+
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [narrow] = useState(isNarrowViewport)
+  const [reduceMotion] = useState(prefersReducedMotion)
+  const HOME = useMemo(() => homeFor(narrow), [narrow])
   const [position, setPosition] = useState(HOME)
 
   const [selected, setSelected] = useState<Country | null>(null) // explore details
   const [target, setTarget] = useState<Country | null>(null) // active guess target
-  // Reviewed countries (explore "mark reviewed" mode). In-memory only — by
-  // design this does not persist across sessions.
-  const [reviewed, setReviewed] = useState<Set<string>>(new Set())
+  const reviewed = useMemo(() => new Set(reviewedList), [reviewedList])
+
+  // Guess "round" tracking → an end-of-round summary every ROUND_SIZE questions.
+  const [round, setRound] = useState({ n: 0, correct: 0 })
+  const [summary, setSummary] = useState<{ n: number; correct: number } | null>(null)
 
   const mode = settings.mode
-  // Spread over baseMode so settings persisted before a field existed (e.g.
-  // hoverName/hoverCapital) fall back to their defaults instead of undefined.
+  // Spread over baseMode so settings persisted before a field existed fall back
+  // to their defaults instead of undefined.
   const active = useMemo(
     () => ({ ...baseMode, ...settings.perMode[mode] }),
     [settings.perMode, mode],
@@ -82,6 +145,21 @@ export default function App() {
       })),
     [setSettings],
   )
+
+  const resetMode = useCallback(
+    () =>
+      setSettings((s) => ({
+        ...s,
+        perMode: { ...s.perMode, [s.mode]: { ...baseMode } },
+      })),
+    [setSettings],
+  )
+
+  const resetStats = useCallback(() => {
+    setStats(DEFAULT_STATS)
+    setRound({ n: 0, correct: 0 })
+    setSummary(null)
+  }, [setStats])
 
   const zoomBy = useCallback((factor: number) => {
     setPosition((p) => ({
@@ -107,45 +185,62 @@ export default function App() {
     zoomToCountry(next)
   }, [pool, zoomToCountry])
 
-  // Reset transient selection/target whenever mode or the active pool changes.
+  // Reset transient selection/target when mode or the active pool changes; in
+  // Explore, auto-fit the map to a region/subregion filter.
   useEffect(() => {
     setSelected(null)
     setTarget(null)
-    setPosition(HOME)
+    setRound({ n: 0, correct: 0 })
+    setSummary(null)
     if (mode === 'guess-prompted' && pool.length > 0) {
       const next = pickRandom(pool)
       setTarget(next)
       zoomToCountry(next)
+    } else if (mode === 'explore' && (active.regions.length > 0 || active.subregion)) {
+      setPosition(fitToCountries(pool) ?? HOME)
+    } else {
+      setPosition(HOME)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, pool])
 
-  const handlePick = useCallback(
-    (c: Country) => {
-      // WorldMap only fires onPick for in-set, clickable countries.
-      if (mode === 'explore') {
-        if (active.markReviewed) {
-          // Toggle reviewed (white). Mark + open details; un-mark + close.
-          const isReviewed = reviewed.has(c.cca3)
-          setReviewed((prev) => {
-            const next = new Set(prev)
-            if (isReviewed) next.delete(c.cca3)
-            else next.add(c.cca3)
-            return next
-          })
-          setSelected(isReviewed ? null : c)
-        } else {
-          // Keep the current map view; selecting only changes the highlight.
-          setSelected(c)
-        }
-      } else if (mode === 'guess-pick') {
-        setTarget(c)
-      }
-    },
-    [mode, active.markReviewed, reviewed],
+  // Pop the end-of-round summary once a block of answers completes.
+  useEffect(() => {
+    if (round.n >= ROUND_SIZE) {
+      setSummary({ n: round.n, correct: round.correct })
+      setRound({ n: 0, correct: 0 })
+    }
+  }, [round])
+
+  const toggleReviewed = useCallback(
+    (cca3: string) =>
+      setReviewedList((prev) =>
+        prev.includes(cca3) ? prev.filter((x) => x !== cca3) : [...prev, cca3],
+      ),
+    [setReviewedList],
   )
 
-  const clearReviewed = useCallback(() => setReviewed(new Set()), [])
+  const handlePick = useCallback(
+    (c: Country) => {
+      // Selecting only opens details now; "reviewed" is an explicit toggle in
+      // the details panel, so a reviewed country can be re-opened freely.
+      if (mode === 'explore') setSelected(c)
+      else if (mode === 'guess-pick') setTarget(c)
+    },
+    [mode],
+  )
+
+  const jumpToCountry = useCallback(
+    (c: Country) => {
+      setMode('explore')
+      setSelected(c)
+      zoomToCountry(c)
+      setSettingsOpen(false)
+    },
+    [setMode, zoomToCountry],
+  )
+
+  const clearReviewed = useCallback(() => setReviewedList([]), [setReviewedList])
 
   const onRoundComplete = useCallback(
     (correct: boolean) => {
@@ -159,6 +254,7 @@ export default function App() {
           totalCorrect: s.totalCorrect + (correct ? 1 : 0),
         }
       })
+      setRound((r) => ({ n: r.n + 1, correct: r.correct + (correct ? 1 : 0) }))
     },
     [setStats],
   )
@@ -169,7 +265,12 @@ export default function App() {
       setTarget(null)
       setPosition(HOME)
     }
-  }, [mode, nextPrompted])
+  }, [mode, nextPrompted, HOME])
+
+  const dismissSummary = useCallback(() => {
+    setSummary(null)
+    onNext()
+  }, [onNext])
 
   const accuracy =
     stats.totalAnswered > 0
@@ -177,13 +278,7 @@ export default function App() {
       : 0
 
   const showSidePanel = mode === 'explore' ? !!selected : !!target
-
-  const modePill =
-    mode === 'explore'
-      ? 'Explore'
-      : mode === 'guess-pick'
-        ? 'Guess · pick'
-        : 'Guess · prompted'
+  const reviewMode = mode === 'explore' && active.markReviewed
 
   return (
     <div className="app">
@@ -195,52 +290,68 @@ export default function App() {
           <span className="brand-name">World Geography Trainer</span>
         </div>
 
-        {mode !== 'explore' && (
-          <div className="scoreboard">
-            <div className="stat">
-              <span className="stat-val">{stats.score}</span>
-              <span className="stat-lab">score</span>
-            </div>
-            <div className="stat">
-              <span className="stat-val">
-                {stats.streak}
-                {stats.streak >= 3 && ' 🔥'}
-              </span>
-              <span className="stat-lab">streak</span>
-            </div>
-            <div className="stat">
-              <span className="stat-val">{accuracy}%</span>
-              <span className="stat-lab">accuracy</span>
-            </div>
-          </div>
-        )}
+        <div className="mode-switch" role="tablist" aria-label="Mode">
+          {MODE_TABS.map((t) => (
+            <button
+              key={t.id}
+              role="tab"
+              aria-selected={mode === t.id}
+              className={`mode-switch-btn ${mode === t.id ? 'on' : ''}`}
+              onClick={() => setMode(t.id)}
+              title={t.title}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
 
-        <div className="topbar-actions">
-          <span className="mode-pill">{modePill}</span>
-          <div className="zoom-group" role="group" aria-label="Zoom">
-            <button
-              className="icon-btn"
-              onClick={() => zoomBy(1 / 1.5)}
-              aria-label="Zoom out"
-              title="Zoom out"
-            >
-              −
+        <div className="topbar-right">
+          {mode !== 'explore' && (
+            <div className="scoreboard">
+              <div className="stat">
+                <span className="stat-val">{stats.score}</span>
+                <span className="stat-lab">score</span>
+              </div>
+              <div className="stat">
+                <span className="stat-val">
+                  {stats.streak}
+                  {stats.streak >= 3 && ' 🔥'}
+                </span>
+                <span className="stat-lab">streak</span>
+              </div>
+              <div className="stat">
+                <span className="stat-val">{accuracy}%</span>
+                <span className="stat-lab">accuracy</span>
+              </div>
+            </div>
+          )}
+
+          <div className="topbar-actions">
+            <div className="zoom-group" role="group" aria-label="Zoom">
+              <button
+                className="icon-btn"
+                onClick={() => zoomBy(1 / 1.5)}
+                aria-label="Zoom out"
+                title="Zoom out"
+              >
+                −
+              </button>
+              <button
+                className="icon-btn"
+                onClick={() => zoomBy(1.5)}
+                aria-label="Zoom in"
+                title="Zoom in"
+              >
+                +
+              </button>
+            </div>
+            <button className="btn" onClick={() => setPosition(HOME)}>
+              Reset view
             </button>
-            <button
-              className="icon-btn"
-              onClick={() => zoomBy(1.5)}
-              aria-label="Zoom in"
-              title="Zoom in"
-            >
-              +
+            <button className="btn primary" onClick={() => setSettingsOpen(true)}>
+              ⚙ Settings
             </button>
           </div>
-          <button className="btn" onClick={() => setPosition(HOME)}>
-            Reset view
-          </button>
-          <button className="btn primary" onClick={() => setSettingsOpen(true)}>
-            ⚙ Settings
-          </button>
         </div>
       </header>
 
@@ -256,11 +367,20 @@ export default function App() {
             }
             hoverName={active.hoverName}
             hoverCapital={active.hoverCapital}
-            reviewMode={mode === 'explore' && active.markReviewed}
+            reviewMode={reviewMode}
             reviewedIds={reviewed}
+            hideReviewed={reviewMode && active.hideReviewed}
+            cvdPalette={cvdPalette}
+            reduceMotion={reduceMotion}
             position={position}
             onPositionChange={setPosition}
           />
+
+          {reviewMode && (
+            <div className="review-progress">
+              Reviewed <strong>{reviewed.size}</strong> / {pool.length}
+            </div>
+          )}
 
           <div className="map-hint">
             {mode === 'explore'
@@ -268,7 +388,7 @@ export default function App() {
                 ? 'Highlighted countries match your filter — click any to study it.'
                 : 'Click any country or dot to study it.'
               : mode === 'guess-prompted'
-                ? 'The white-outlined country is the target — name it and its capital.'
+                ? 'The ringed country is the target — name it and its capital.'
                 : 'Click any highlighted country or dot, then name it and its capital.'}
           </div>
         </div>
@@ -276,7 +396,14 @@ export default function App() {
         {showSidePanel && (
           <aside className="side">
             {mode === 'explore' && selected && (
-              <DetailsPanel country={selected} onClose={() => setSelected(null)} />
+              <DetailsPanel
+                country={selected}
+                cvdPalette={cvdPalette}
+                tracking={reviewMode}
+                reviewed={reviewed.has(selected.cca3)}
+                onToggleReviewed={() => toggleReviewed(selected.cca3)}
+                onClose={() => setSelected(null)}
+              />
             )}
             {mode !== 'explore' && target && (
               <GuessPanel
@@ -308,8 +435,64 @@ export default function App() {
           playableCount={pool.length}
           reviewedCount={reviewed.size}
           onClearReviewed={clearReviewed}
+          cvdPalette={cvdPalette}
+          onToggleCvd={() => setCvdPalette((v) => !v)}
+          onResetMode={resetMode}
+          onResetStats={resetStats}
+          onJumpToCountry={jumpToCountry}
           onClose={() => setSettingsOpen(false)}
         />
+      )}
+
+      {summary && (
+        <div className="modal-overlay" onClick={dismissSummary}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Round complete</h2>
+            <p className="round-score">
+              {summary.correct} <span>/ {summary.n}</span>
+            </p>
+            <p className="muted">
+              Streak {stats.streak} · best {stats.bestStreak} · {accuracy}% all-time
+              accuracy
+            </p>
+            <button className="btn primary" onClick={dismissSummary} autoFocus>
+              Keep going →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!onboarded && (
+        <div className="modal-overlay" onClick={() => setOnboarded(true)}>
+          <div className="modal onboard" onClick={(e) => e.stopPropagation()}>
+            <h2>🌍 World Geography Trainer</h2>
+            <p className="muted">Three ways to play — switch any time from the top bar:</p>
+            <ul className="onboard-list">
+              <li>
+                <strong>Explore</strong> — tap a country to study its capital, cities,
+                flag &amp; trivia.
+              </li>
+              <li>
+                <strong>Pick</strong> — tap a country on the map, then name it and its
+                capital.
+              </li>
+              <li>
+                <strong>Prompted</strong> — a country lights up; name it and its capital.
+              </li>
+            </ul>
+            <p className="muted small">
+              ⚙ Settings lets you filter by region, change answer formats, track what
+              you've reviewed, and more.
+            </p>
+            <button
+              className="btn primary"
+              onClick={() => setOnboarded(true)}
+              autoFocus
+            >
+              Got it
+            </button>
+          </div>
+        </div>
       )}
     </div>
   )

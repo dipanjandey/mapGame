@@ -1,11 +1,13 @@
+import { useMemo, useState } from 'react'
 import type {
+  Country,
   Difficulty,
   GameMode,
   ModeSettings,
   OptionCount,
   Region,
 } from '../lib/types'
-import { REGIONS, subregionsByRegion } from '../lib/countries'
+import { countries, REGIONS, subregionsByRegion } from '../lib/countries'
 
 const OPTION_VALUES: OptionCount[] = [0, 2, 3, 4]
 const DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard']
@@ -22,6 +24,9 @@ const MODE_BLURB: Record<GameMode, string> = {
   'guess-pick': 'Click an active country, then name it & its capital.',
 }
 
+// Order mirrors the top-bar switcher: simplest/landing mode first.
+const MODE_ORDER: GameMode[] = ['explore', 'guess-pick', 'guess-prompted']
+
 export default function SettingsPanel({
   mode,
   settings,
@@ -30,6 +35,11 @@ export default function SettingsPanel({
   playableCount,
   reviewedCount,
   onClearReviewed,
+  cvdPalette,
+  onToggleCvd,
+  onResetMode,
+  onResetStats,
+  onJumpToCountry,
   onClose,
 }: {
   mode: GameMode
@@ -39,9 +49,25 @@ export default function SettingsPanel({
   playableCount: number
   reviewedCount: number
   onClearReviewed: () => void
+  cvdPalette: boolean
+  onToggleCvd: () => void
+  onResetMode: () => void
+  onResetStats: () => void
+  onJumpToCountry: (c: Country) => void
   onClose: () => void
 }) {
   const isGuess = mode !== 'explore'
+
+  // Hover-info controls do nothing on touch (there is no hover), so hide them.
+  const canHover = useMemo(
+    () =>
+      typeof window === 'undefined' ||
+      !window.matchMedia ||
+      window.matchMedia('(hover: hover)').matches,
+    [],
+  )
+
+  const [search, setSearch] = useState('')
 
   const toggleRegion = (r: Region) => {
     const has = settings.regions.includes(r)
@@ -54,6 +80,31 @@ export default function SettingsPanel({
   const allSubregions: { region: Region; sub: string }[] = REGIONS.flatMap((r) =>
     subregionsByRegion[r].map((sub) => ({ region: r, sub })),
   )
+
+  const tryJump = (value: string) => {
+    const match = countries.find(
+      (c) => c.name.toLowerCase() === value.trim().toLowerCase(),
+    )
+    if (match) {
+      onJumpToCountry(match)
+      setSearch('')
+    }
+  }
+
+  const filterSummary =
+    (settings.subregion
+      ? settings.subregion
+      : settings.regions.length
+        ? settings.regions.join(', ')
+        : 'All regions') +
+    (settings.tier1Only ? ' · common only' : '') +
+    (settings.includeDisputed ? '' : ' · no disputed')
+
+  const filtersActive =
+    settings.regions.length > 0 ||
+    !!settings.subregion ||
+    settings.tier1Only ||
+    !settings.includeDisputed
 
   return (
     <div className="settings-overlay" onClick={onClose}>
@@ -68,7 +119,7 @@ export default function SettingsPanel({
         <section className="set-group">
           <label className="set-label">Mode</label>
           <div className="seg vert">
-            {(['guess-prompted', 'guess-pick', 'explore'] as GameMode[]).map((m) => (
+            {MODE_ORDER.map((m) => (
               <button
                 key={m}
                 className={`seg-btn ${mode === m ? 'on' : ''}`}
@@ -131,7 +182,7 @@ export default function SettingsPanel({
             ) : (
               <>
                 <section className="set-group">
-                  <label className="set-label"># options — country</label>
+                  <label className="set-label">Country name — answer style</label>
                   <div className="seg">
                     {OPTION_VALUES.map((v) => (
                       <button
@@ -139,14 +190,14 @@ export default function SettingsPanel({
                         className={`seg-btn ${settings.countryOptions === v ? 'on' : ''}`}
                         onClick={() => onChange({ countryOptions: v })}
                       >
-                        {v === 0 ? 'Spell' : v}
+                        {v === 0 ? 'Type' : v}
                       </button>
                     ))}
                   </div>
                 </section>
 
                 <section className="set-group">
-                  <label className="set-label"># options — capital</label>
+                  <label className="set-label">Capital — answer style</label>
                   <div className="seg">
                     {OPTION_VALUES.map((v) => (
                       <button
@@ -154,11 +205,15 @@ export default function SettingsPanel({
                         className={`seg-btn ${settings.capitalOptions === v ? 'on' : ''}`}
                         onClick={() => onChange({ capitalOptions: v })}
                       >
-                        {v === 0 ? 'Spell' : v}
+                        {v === 0 ? 'Type' : v}
                       </button>
                     ))}
                   </div>
                 </section>
+
+                <p className="muted small" style={{ marginTop: -8 }}>
+                  Type = free-text answer · 2–4 = that many multiple-choice options.
+                </p>
 
                 <section className="set-group">
                   <label className="set-label">Difficulty (distractor pool)</label>
@@ -179,23 +234,27 @@ export default function SettingsPanel({
           </>
         )}
 
-        {/* Explore-only: what the hover tooltip reveals */}
-        {!isGuess && (
+        {/* Explore-only: what the hover tooltip reveals (hidden on touch) */}
+        {!isGuess && canHover && (
           <section className="set-group">
             <label className="set-label">Show on hover</label>
-            <div className="chips">
-              <button
-                className={`chip ${settings.hoverName ? 'on' : ''}`}
-                onClick={() => onChange({ hoverName: !settings.hoverName })}
-              >
+            <div className="switch-col">
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={settings.hoverName}
+                  onChange={(e) => onChange({ hoverName: e.target.checked })}
+                />
                 Country name
-              </button>
-              <button
-                className={`chip ${settings.hoverCapital ? 'on' : ''}`}
-                onClick={() => onChange({ hoverCapital: !settings.hoverCapital })}
-              >
+              </label>
+              <label className="switch">
+                <input
+                  type="checkbox"
+                  checked={settings.hoverCapital}
+                  onChange={(e) => onChange({ hoverCapital: e.target.checked })}
+                />
                 Capital
-              </button>
+              </label>
             </div>
             {!settings.hoverName && !settings.hoverCapital && (
               <p className="muted small" style={{ marginTop: 8 }}>
@@ -205,7 +264,7 @@ export default function SettingsPanel({
           </section>
         )}
 
-        {/* Explore-only: track which countries you've reviewed */}
+        {/* Explore-only: reviewed tracking */}
         {!isGuess && (
           <section className="set-group">
             <label className="set-label">Track reviewed</label>
@@ -215,88 +274,146 @@ export default function SettingsPanel({
                 checked={settings.markReviewed}
                 onChange={(e) => onChange({ markReviewed: e.target.checked })}
               />
-              Mark reviewed on click (turns it white)
+              Track which countries you've reviewed
             </label>
             {settings.markReviewed && (
-              <p className="muted small" style={{ marginTop: 8 }}>
-                Click a country to mark it reviewed; click again to un-mark.
-                Resets when you reload.
-              </p>
-            )}
-            {reviewedCount > 0 && (
-              <button
-                className="btn"
-                style={{ marginTop: 10 }}
-                onClick={onClearReviewed}
-              >
-                Clear reviewed ({reviewedCount})
-              </button>
+              <>
+                <p className="muted small" style={{ marginTop: 8 }}>
+                  Open a country and use “Mark as reviewed” in its panel. Reviewed
+                  countries fade with a ✓; progress is saved.
+                </p>
+                <label className="switch" style={{ marginTop: 10 }}>
+                  <input
+                    type="checkbox"
+                    checked={settings.hideReviewed}
+                    onChange={(e) => onChange({ hideReviewed: e.target.checked })}
+                  />
+                  Hide reviewed (show only what's left)
+                </label>
+                {reviewedCount > 0 && (
+                  <button
+                    className="btn"
+                    style={{ marginTop: 10 }}
+                    onClick={onClearReviewed}
+                  >
+                    Clear reviewed ({reviewedCount})
+                  </button>
+                )}
+              </>
             )}
           </section>
         )}
 
-        {/* Shared: the filters that define the active country set */}
-        <section className="set-group">
-          <label className="set-label">
-            Regions{' '}
-            <span className="muted small">
-              {isGuess ? '(scopes the quiz)' : '(highlights the map)'}
-            </span>
-          </label>
-          <div className="chips">
-            {REGIONS.map((r) => (
-              <button
-                key={r}
-                className={`chip ${settings.regions.includes(r) ? 'on' : ''}`}
-                disabled={!!settings.subregion}
-                onClick={() => toggleRegion(r)}
-              >
-                {r}
-              </button>
-            ))}
-            {settings.regions.length === 0 && !settings.subregion && (
-              <span className="muted small">All regions</span>
-            )}
-          </div>
-        </section>
-
-        <section className="set-group">
-          <label className="set-label">Drill to subregion</label>
-          <select
-            className="select"
-            value={settings.subregion ?? ''}
-            onChange={(e) => onChange({ subregion: e.target.value || null })}
-          >
-            <option value="">— none —</option>
-            {allSubregions.map(({ region, sub }) => (
-              <option key={sub} value={sub}>
-                {region} · {sub}
-              </option>
-            ))}
-          </select>
-        </section>
-
-        <section className="set-group row">
-          <label className="switch">
+        {/* Explore-only: jump straight to a country */}
+        {!isGuess && (
+          <section className="set-group">
+            <label className="set-label">Jump to a country</label>
             <input
-              type="checkbox"
-              checked={settings.includeDisputed}
-              onChange={(e) => onChange({ includeDisputed: e.target.checked })}
+              className="select"
+              list="wgt-country-search"
+              placeholder="Type a country name…"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value)
+                tryJump(e.target.value)
+              }}
+              onKeyDown={(e) => e.key === 'Enter' && tryJump(search)}
             />
-            Include disputed territories
-          </label>
+            <datalist id="wgt-country-search">
+              {countries.map((c) => (
+                <option key={c.cca3} value={c.name} />
+              ))}
+            </datalist>
+          </section>
+        )}
+
+        {/* Shared: the filters that define the active country set (collapsible) */}
+        <details className="filters" open={filtersActive}>
+          <summary className="filters-summary">
+            <span>Filters {isGuess ? '(scope the quiz)' : '(highlight the map)'}</span>
+            <span className="muted small">{filterSummary}</span>
+          </summary>
+
+          <section className="set-group">
+            <label className="set-label">Regions</label>
+            <div className="chips">
+              {REGIONS.map((r) => (
+                <button
+                  key={r}
+                  className={`chip ${settings.regions.includes(r) ? 'on' : ''}`}
+                  disabled={!!settings.subregion}
+                  onClick={() => toggleRegion(r)}
+                >
+                  {r}
+                </button>
+              ))}
+              {settings.regions.length === 0 && !settings.subregion && (
+                <span className="muted small">All regions</span>
+              )}
+            </div>
+          </section>
+
+          <section className="set-group">
+            <label className="set-label">Drill to subregion</label>
+            <select
+              className="select"
+              value={settings.subregion ?? ''}
+              onChange={(e) => onChange({ subregion: e.target.value || null })}
+            >
+              <option value="">— none —</option>
+              {allSubregions.map(({ region, sub }) => (
+                <option key={sub} value={sub}>
+                  {region} · {sub}
+                </option>
+              ))}
+            </select>
+            <p className="muted small" style={{ marginTop: 6 }}>
+              Picking a subregion overrides the region chips above.
+            </p>
+          </section>
+
+          <section className="set-group row">
+            <label className="switch">
+              <input
+                type="checkbox"
+                checked={settings.includeDisputed}
+                onChange={(e) => onChange({ includeDisputed: e.target.checked })}
+              />
+              Include disputed territories
+            </label>
+            <label className="switch">
+              <input
+                type="checkbox"
+                checked={settings.tier1Only}
+                onChange={(e) => onChange({ tier1Only: e.target.checked })}
+              />
+              Common countries only (tier 1)
+            </label>
+          </section>
+        </details>
+
+        {/* Shared display preference */}
+        <section className="set-group">
+          <label className="set-label">Display</label>
           <label className="switch">
-            <input
-              type="checkbox"
-              checked={settings.tier1Only}
-              onChange={(e) => onChange({ tier1Only: e.target.checked })}
-            />
-            Common countries only (tier 1)
+            <input type="checkbox" checked={cvdPalette} onChange={onToggleCvd} />
+            Colour-blind-friendly map colours
           </label>
         </section>
 
         <div className="playable-count">
           {playableCount} countries active{isGuess ? ' in this quiz' : ' on the map'}
+        </div>
+
+        <div className="set-footer">
+          <button className="btn" onClick={onResetMode}>
+            Reset {MODE_LABEL[mode]} settings
+          </button>
+          {isGuess && (
+            <button className="btn" onClick={onResetStats}>
+              Reset score &amp; stats
+            </button>
+          )}
         </div>
       </div>
     </div>

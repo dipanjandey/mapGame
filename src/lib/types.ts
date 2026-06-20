@@ -61,9 +61,13 @@ export interface ModeSettings {
   // Explore-only: what the hover tooltip reveals. Both default on.
   hoverName: boolean
   hoverCapital: boolean
-  // Explore-only: clicking a country marks it reviewed (white) instead of
-  // just opening details. In-memory only — not persisted across sessions.
+  // Explore-only: turn on "reviewed" tracking. Clicking a country opens it; the
+  // details panel then has a "Mark reviewed" toggle. Reviewed countries fade
+  // with a ✓ and a progress counter shows. The reviewed set is persisted.
   markReviewed: boolean
+  // Explore-only (with tracking on): hide reviewed countries so only the ones
+  // left to study stay interactive/visible.
+  hideReviewed: boolean
   // Guess-only: use fill-in-the-blanks for both country & capital instead of
   // multiple choice / spelling. revealPercent (0=hard .. 80=very easy) sets
   // how many letters are pre-filled.

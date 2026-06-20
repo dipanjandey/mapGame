@@ -87,17 +87,45 @@ button {
   color: var(--muted);
 }
 
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: auto;
+}
 .topbar-actions {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.mode-pill {
-  font-size: 12px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--bg-3);
+
+/* Mode switcher — the primary nav, always visible (no longer buried in Settings). */
+.mode-switch {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+.mode-switch-btn {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 120ms, color 120ms;
+}
+.mode-switch-btn:hover {
   color: var(--text);
+}
+.mode-switch-btn.on {
+  background: var(--accent);
+  color: #082f49;
+  font-weight: 600;
 }
 .zoom-group {
   display: flex;
@@ -207,6 +235,21 @@ button {
   max-width: 90%;
   text-align: center;
 }
+.review-progress {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid var(--line);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.review-progress strong {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
 
 /* ---------- Side panel ---------- */
 .side {
@@ -289,6 +332,27 @@ button {
   border-radius: 999px;
   color: #0f172a;
   font-weight: 600;
+}
+.review-toggle {
+  width: 100%;
+  margin: 4px 0 18px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg-3);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms;
+}
+.review-toggle:hover {
+  background: #475569;
+}
+.review-toggle.on {
+  background: #0c2a3a;
+  border-color: var(--accent);
+  color: var(--accent);
 }
 .details section {
   margin-bottom: 16px;
@@ -376,6 +440,13 @@ button {
 .qblock {
   margin-bottom: 18px;
 }
+.qgate-hint {
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+}
 .qlabel {
   font-size: 13px;
   font-weight: 600;
@@ -399,6 +470,30 @@ button {
 }
 .option:hover:not(:disabled) {
   background: #475569;
+}
+.opt-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-right: 10px;
+  border-radius: 4px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  vertical-align: middle;
+}
+.option.correct .opt-key,
+.option.wrong .opt-key {
+  opacity: 0.5;
+}
+.skip-btn {
+  width: 100%;
+  margin-top: 4px;
+  color: var(--muted);
 }
 .option.correct {
   background: #14532d;
@@ -662,6 +757,50 @@ button {
   flex-direction: column;
   gap: 12px;
 }
+.switch-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Collapsible filters (reduces the long settings scroll). */
+.filters {
+  margin-bottom: 20px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  padding: 0 12px;
+}
+.filters[open] {
+  padding-bottom: 4px;
+}
+.filters-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 2px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  list-style: none;
+}
+.filters-summary::-webkit-details-marker {
+  display: none;
+}
+.filters-summary::before {
+  content: '▸';
+  margin-right: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.filters[open] .filters-summary::before {
+  content: '▾';
+}
+.filters-summary > span:last-child {
+  margin-left: auto;
+  text-align: right;
+}
 .switch {
   display: flex;
   align-items: center;
@@ -684,6 +823,18 @@ button {
   color: var(--accent);
   font-weight: 600;
 }
+.set-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.set-footer .btn {
+  flex: 1;
+  min-width: 140px;
+}
 
 .empty-banner {
   position: fixed;
@@ -696,6 +847,69 @@ button {
   border-radius: 8px;
   font-size: 14px;
   z-index: 60;
+}
+
+/* ---------- Modals (round summary, onboarding) ---------- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 120;
+  padding: 20px;
+}
+.modal {
+  width: 420px;
+  max-width: 100%;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+}
+.modal h2 {
+  margin: 0 0 12px;
+  font-size: 20px;
+}
+.modal .btn {
+  margin-top: 18px;
+}
+.modal .btn.primary {
+  width: 100%;
+  padding: 12px;
+  font-size: 15px;
+}
+.round-score {
+  margin: 6px 0;
+  font-size: 40px;
+  font-weight: 800;
+  color: var(--accent-2);
+  font-variant-numeric: tabular-nums;
+}
+.round-score span {
+  font-size: 22px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.modal.onboard {
+  text-align: left;
+}
+.modal.onboard h2 {
+  text-align: center;
+}
+.onboard-list {
+  margin: 12px 0;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.onboard-list li {
+  margin-bottom: 8px;
+}
+.onboard-list strong {
+  color: var(--accent);
 }
 
 /* ---------- Responsive ---------- */
@@ -729,8 +943,16 @@ button {
     gap: 10px;
     padding: 8px 12px;
   }
-  .mode-pill {
-    display: none;
+  /* Mode switch drops to its own full-width row and the buttons share it
+     evenly, so mode stays one tap away on phones (it used to be settings-only). */
+  .mode-switch {
+    order: 5;
+    flex-basis: 100%;
+  }
+  .mode-switch-btn {
+    flex: 1;
+    text-align: center;
+    padding: 8px 6px;
   }
 }
 

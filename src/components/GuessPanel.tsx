@@ -63,22 +63,26 @@ export default function GuessPanel({
 
   const [nameRes, setNameRes] = useState<QuestionResult | null>(null)
   const [capRes, setCapRes] = useState<QuestionResult | null>(null)
+  const [skipped, setSkipped] = useState(false)
   const [scored, setScored] = useState(false)
 
   useEffect(() => {
     setNameRes(null)
     setCapRes(null)
+    setSkipped(false)
     setScored(false)
   }, [target])
 
   const bothDone = nameRes != null && capRes != null
+  const done = bothDone || skipped
 
   useEffect(() => {
-    if (bothDone && !scored) {
+    if (done && !scored) {
       setScored(true)
-      onRoundComplete(!!nameRes?.correct && !!capRes?.correct)
+      // Skipping counts as incorrect.
+      onRoundComplete(!skipped && !!nameRes?.correct && !!capRes?.correct)
     }
-  }, [bothDone, scored, nameRes, capRes, onRoundComplete])
+  }, [done, skipped, scored, nameRes, capRes, onRoundComplete])
 
   return (
     <div className="guess">
@@ -91,30 +95,51 @@ export default function GuessPanel({
         )}
       </div>
 
-      <QuestionBlock
-        key={`name-${target.cca3}-${countryFormat}-${settings.revealPercent}`}
-        label="Country name"
-        answer={target.name}
-        aliases={target.nameAliases}
-        format={countryFormat}
-        options={countryOptions}
-        revealPercent={settings.revealPercent}
-        onCommit={setNameRes}
-        autoFocus
-      />
+      {!skipped && (
+        <>
+          <QuestionBlock
+            key={`name-${target.cca3}-${countryFormat}-${settings.revealPercent}`}
+            label="Country name"
+            answer={target.name}
+            aliases={target.nameAliases}
+            format={countryFormat}
+            options={countryOptions}
+            revealPercent={settings.revealPercent}
+            onCommit={setNameRes}
+            autoFocus
+          />
 
-      <QuestionBlock
-        key={`cap-${target.cca3}-${capitalFormat}-${settings.revealPercent}`}
-        label={`Capital of ${prompted && !nameRes ? '…' : target.name}`}
-        answer={target.primaryCapital ?? ''}
-        aliases={target.capitalAliases}
-        format={capitalFormat}
-        options={capitalOptions}
-        revealPercent={settings.revealPercent}
-        onCommit={setCapRes}
-      />
+          {/* Gate the capital question behind the country answer so neither step
+              spoils the other: in pick mode it stops "Capital of <name>" from
+              naming the country, and in either mode it keeps a capital option
+              (e.g. "Mexico City") from giving the country away. */}
+          {nameRes ? (
+            <QuestionBlock
+              key={`cap-${target.cca3}-${capitalFormat}-${settings.revealPercent}`}
+              label={`Capital of ${target.name}`}
+              answer={target.primaryCapital ?? ''}
+              aliases={target.capitalAliases}
+              format={capitalFormat}
+              options={capitalOptions}
+              revealPercent={settings.revealPercent}
+              onCommit={setCapRes}
+              autoFocus
+            />
+          ) : (
+            <p className="qgate-hint muted small">
+              Then name its capital — unlocked once you answer the country.
+            </p>
+          )}
+        </>
+      )}
 
-      {bothDone && (
+      {!done && (
+        <button className="btn skip-btn" onClick={() => setSkipped(true)}>
+          I don't know — reveal answer
+        </button>
+      )}
+
+      {done && (
         <div className="reveal">
           <div className="reveal-flag">
             <img src={target.flagSvg} alt="" className="flag-sm" />
@@ -123,12 +148,13 @@ export default function GuessPanel({
               <div className="muted">{target.officialName}</div>
             </div>
           </div>
-          {target.capital.length > 1 && (
-            <div className="reveal-caps">
-              Capitals:{' '}
-              {target.capital.map((c) => `${c.name} (${c.type ?? '—'})`).join(', ')}
-            </div>
-          )}
+          <div className="reveal-caps">
+            Capital: {target.primaryCapital ?? '—'}
+            {target.capital.length > 1 &&
+              ` · all: ${target.capital
+                .map((c) => `${c.name} (${c.type ?? '—'})`)
+                .join(', ')}`}
+          </div>
           <button className="btn primary next-btn" onClick={onNext} autoFocus>
             Next →
           </button>

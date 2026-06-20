@@ -7,7 +7,13 @@ import {
   Marker,
 } from 'react-simple-maps'
 import topo110 from 'world-atlas/countries-110m.json'
-import { byId, markerCountries, REGION_COLORS } from '../lib/countries'
+import {
+  byId,
+  byCca3,
+  markerCountries,
+  smallCountries,
+  regionPalette,
+} from '../lib/countries'
 import { PROJECTION, MAP_W, MAP_H, ANTARCTICA_ID } from '../lib/mapProjection'
 import type { Country, GameMode } from '../lib/types'
 
@@ -15,6 +21,8 @@ import type { Country, GameMode } from '../lib/types'
 // zooms in to inspect a country (the 110m shapes look coarse up close).
 const LOW_RES = topo110 as unknown as object
 const DETAIL_ZOOM = 2.2
+// Below this zoom, small polygon countries get an invisible enlarged tap area.
+const HELPER_ZOOM = 3
 
 interface Position {
   coordinates: [number, number]
@@ -33,17 +41,27 @@ interface WorldMapProps {
   /** Explore hover tooltip: show the country name / capital. */
   hoverName: boolean
   hoverCapital: boolean
-  /** Explore "mark reviewed" mode: reviewed countries render white. */
+  /** Explore "reviewed" tracking: reviewed countries fade with a ✓. */
   reviewMode: boolean
   reviewedIds: Set<string>
+  /** Hide reviewed countries (dim + non-interactive) to focus on the rest. */
+  hideReviewed: boolean
+  /** Use the colour-blind-friendly region palette. */
+  cvdPalette: boolean
+  /** Skip the locator-ring pulse animation. */
+  reduceMotion: boolean
   position: Position
   onPositionChange: (p: Position) => void
 }
 
 const OUT_FILL = '#172033' // out-of-set: dimmed
 const MASK_FILL = '#475569' // in-set but masked (prompted)
+const TARGET_FILL = '#cbd5e1' // prompted: the country to identify
 const STROKE = '#0f172a'
-const REVIEWED_FILL = '#f8fafc' // explore: marked-reviewed (white)
+const HOVER_FILL = '#f8fafc' // clickable hover — the only near-white state now
+const FOCUS = '#38bdf8' // selection / target outline + locator ring (accent, off the region palette)
+const REVIEWED_DIM = 0.4 // reviewed countries fade so un-reviewed ones pop
+const HIDDEN_DIM = 0.12 // reviewed countries when "hide reviewed" is on
 
 export default function WorldMap({
   mode,
@@ -55,6 +73,9 @@ export default function WorldMap({
   hoverCapital,
   reviewMode,
   reviewedIds,
+  hideReviewed,
+  cvdPalette,
+  reduceMotion,
   position,
   onPositionChange,
 }: WorldMapProps) {
@@ -64,6 +85,8 @@ export default function WorldMap({
     name: string
     capital: string | null
   } | null>(null)
+
+  const palette = regionPalette(cvdPalette)
 
   // Adaptive resolution: start with 110m, upgrade to 50m (and keep it) once
   // the user zooms past the threshold so country shapes stay accurate up close.
@@ -79,9 +102,8 @@ export default function WorldMap({
   }, [position.zoom, hiResLoaded])
 
   // Touch devices can't fire mouseleave, so rsm's internal hover state sticks
-  // after a tap (the tapped country keeps the white hover fill, masking its
-  // selected colour). Detect real hover capability and drop hover behaviour
-  // entirely when it's absent.
+  // after a tap. Detect real hover capability and drop hover behaviour when
+  // it's absent.
   const canHover = useMemo(
     () =>
       typeof window === 'undefined' ||
@@ -100,24 +122,41 @@ export default function WorldMap({
     const inSet = playableIds.has(c.cca3)
     const isTarget = c.cca3 === highlightCca3
     const isSelected = c.cca3 === selectedCca3
-
-    // Reviewed white takes priority over the selected amber so a click gives
-    // immediate white feedback; the open country is shown via its stroke.
     const reviewed = reviewMode && reviewedIds.has(c.cca3)
+    const hidden = reviewed && hideReviewed
+    const focused = isTarget || isSelected
 
+    // Selection / target are encoded by an outline + a locator ring (rendered
+    // below), never a fill swap, so they can't collide with a region colour.
+    // Reviewed countries keep their region colour but fade via opacity — except
+    // the one currently open, which stays bright.
     let fill: string
     if (!inSet) fill = OUT_FILL
-    else if (reviewed) fill = REVIEWED_FILL
-    else if (isSelected) fill = '#fbbf24'
-    else if (masked) fill = isTarget ? '#cbd5e1' : MASK_FILL
-    else fill = REGION_COLORS[c.region]
+    else if (masked) fill = isTarget ? TARGET_FILL : MASK_FILL
+    else fill = palette[c.region]
 
-    const clickable = clickEnabled && inSet
-    return { inSet, isTarget, isSelected, reviewed, fill, clickable }
+    const clickable = clickEnabled && inSet && !hidden
+    const opacity = !inSet
+      ? 0.4
+      : hidden
+        ? HIDDEN_DIM
+        : reviewed && !focused
+          ? REVIEWED_DIM
+          : 1
+    return { inSet, isTarget, isSelected, reviewed, hidden, focused, fill, clickable, opacity }
   }
 
-  // Hover tooltip only appears in explore mode, and only if at least one of
-  // the hover-info toggles is on.
+  // The single "focused" country (open in explore/pick, or the prompted target)
+  // gets a zoom-independent pulsing ring so it's findable even at world zoom.
+  const focusCca3 = highlightCca3 ?? selectedCca3
+  const focusCountry = focusCca3 ? byCca3[focusCca3] : null
+  const ringR = 13 / Math.sqrt(position.zoom)
+  const ringW = Math.max(0.7, 2 / Math.sqrt(position.zoom))
+  const checkR = 4.6 / Math.sqrt(position.zoom)
+  const helperR = 9 / Math.sqrt(position.zoom)
+
+  // Hover tooltip only appears in explore mode, and only if at least one of the
+  // hover-info toggles is on.
   const hoverEnabled = canHover && showNames && (hoverName || hoverCapital)
   const enter = (e: { clientX: number; clientY: number }, c: Country) => {
     if (hoverEnabled)
@@ -161,18 +200,14 @@ export default function WorldMap({
                     />
                   )
                 }
-                const { inSet, isTarget, isSelected, reviewed, fill, clickable } =
-                  resolve(country)
-                // In review mode the open country is white, so mark it with an
-                // amber outline instead of fill to show which panel is open.
-                const selStroke = reviewMode && isSelected
+                const { inSet, focused, fill, clickable, opacity } = resolve(country)
                 const defaultStyle = {
                   fill,
-                  stroke: isTarget ? '#fff' : selStroke ? '#fbbf24' : STROKE,
-                  strokeWidth: isTarget ? 1.3 : selStroke ? 1 : 0.3,
+                  stroke: focused ? FOCUS : STROKE,
+                  strokeWidth: focused ? 1.3 : 0.3,
                   strokeDasharray: country.disputed && inSet ? '2 1.5' : undefined,
                   outline: 'none',
-                  opacity: inSet ? 1 : 0.4,
+                  opacity,
                   transition: 'fill 120ms, opacity 120ms',
                 }
                 return (
@@ -186,27 +221,20 @@ export default function WorldMap({
                     style={{
                       default: defaultStyle,
                       // On touch, fall back to the default style so the hover
-                      // fill can't get stuck after a tap.
+                      // fill can't get stuck after a tap. White is now used only
+                      // for hover, so it reads unambiguously as "interactive".
                       hover: canHover
                         ? {
-                            // Distinct hover colour in review mode so a hovered
-                            // (unreviewed) country doesn't look already-reviewed.
-                            fill: clickable
-                              ? masked
-                                ? '#94a3b8'
-                                : reviewMode && !reviewed
-                                  ? '#fcd34d'
-                                  : '#f8fafc'
-                              : fill,
-                            stroke: isTarget ? '#fff' : clickable ? '#fff' : STROKE,
-                            strokeWidth: clickable ? 0.5 : 0.3,
+                            fill: clickable ? HOVER_FILL : fill,
+                            stroke: clickable ? '#fff' : STROKE,
+                            strokeWidth: clickable ? 0.6 : 0.3,
                             outline: 'none',
                             opacity: inSet ? 1 : 0.4,
                             cursor: clickable ? 'pointer' : 'default',
                           }
                         : defaultStyle,
                       pressed: {
-                        fill: isSelected || clickable ? '#fbbf24' : fill,
+                        fill: clickable ? HOVER_FILL : fill,
                         outline: 'none',
                       },
                     }}
@@ -218,7 +246,7 @@ export default function WorldMap({
 
           {/* Marker layer: the 30 needsMarker countries (+ Kosovo). Always on top. */}
           {markerCountries.map((c) => {
-            const { inSet, isTarget, isSelected, fill, clickable } = resolve(c)
+            const { inSet, focused, fill, clickable, opacity } = resolve(c)
             const r = Math.max(2.5, 4 / Math.sqrt(position.zoom))
             return (
               <Marker
@@ -233,13 +261,89 @@ export default function WorldMap({
                 <circle
                   r={r}
                   fill={inSet ? fill : OUT_FILL}
-                  stroke={isTarget ? '#fff' : isSelected ? '#fff' : '#0f172a'}
-                  strokeWidth={isTarget ? 1.4 : 0.6}
-                  opacity={inSet ? 1 : 0.4}
+                  stroke={focused ? FOCUS : '#0f172a'}
+                  strokeWidth={focused ? 1.4 : 0.6}
+                  opacity={opacity}
                 />
               </Marker>
             )
           })}
+
+          {/* Invisible enlarged tap areas for small polygon countries at low
+              zoom, so they're forgiving to click/tap (no visual clutter). */}
+          {clickEnabled &&
+            position.zoom < HELPER_ZOOM &&
+            smallCountries.map((c) => {
+              const { clickable } = resolve(c)
+              if (!clickable) return null
+              return (
+                <Marker
+                  key={`hit-${c.cca3}`}
+                  coordinates={[c.latlng[1], c.latlng[0]]}
+                  onClick={() => onPick(c)}
+                  onMouseEnter={(e) => enter(e, c)}
+                  onMouseMove={move}
+                  onMouseLeave={leave}
+                  style={{ default: { cursor: 'pointer' } }}
+                >
+                  <circle r={helperR} fill="#000" fillOpacity={0} style={{ pointerEvents: 'all' }} />
+                </Marker>
+              )
+            })}
+
+          {/* Reviewed ✓ badges (explore review mode). The currently-open country
+              shows the locator ring instead, so it's skipped here. */}
+          {reviewMode &&
+            !hideReviewed &&
+            [...reviewedIds].map((id) => {
+              const c = byCca3[id]
+              if (!c || !playableIds.has(c.cca3) || c.cca3 === focusCca3) return null
+              return (
+                <Marker
+                  key={`rev-${id}`}
+                  coordinates={[c.latlng[1], c.latlng[0]]}
+                  style={{ default: { pointerEvents: 'none' } }}
+                >
+                  <circle r={checkR} fill="#0b1220" opacity={0.55} />
+                  <path
+                    d={`M ${-0.42 * checkR} ${0.02 * checkR} L ${-0.1 * checkR} ${0.32 * checkR} L ${0.46 * checkR} ${-0.36 * checkR}`}
+                    fill="none"
+                    stroke={FOCUS}
+                    strokeWidth={Math.max(0.5, checkR * 0.28)}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </Marker>
+              )
+            })}
+
+          {/* Zoom-independent locator ring for the focused / target country. */}
+          {focusCountry && (
+            <Marker
+              coordinates={[focusCountry.latlng[1], focusCountry.latlng[0]]}
+              style={{ default: { pointerEvents: 'none' } }}
+            >
+              <circle r={ringR} fill="none" stroke={FOCUS} strokeWidth={ringW} opacity={0.95}>
+                {!reduceMotion && (
+                  <>
+                    <animate
+                      attributeName="r"
+                      values={`${ringR * 0.55};${ringR};${ringR * 0.55}`}
+                      dur="1.5s"
+                      repeatCount="indefinite"
+                    />
+                    <animate
+                      attributeName="opacity"
+                      values="0.95;0.15;0.95"
+                      dur="1.5s"
+                      repeatCount="indefinite"
+                    />
+                  </>
+                )}
+              </circle>
+              <circle r={Math.max(1.1, ringW * 1.1)} fill={FOCUS} />
+            </Marker>
+          )}
         </ZoomableGroup>
       </ComposableMap>
 

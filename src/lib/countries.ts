@@ -22,6 +22,30 @@ export const REGION_COLORS: Record<Region, string> = {
   Oceania: '#10b981',
 }
 
+/**
+ * Colour-blind-friendly region palette (Okabe–Ito), opt-in via Settings. Chosen
+ * so the five regions stay distinguishable under deuteranopia/protanopia, where
+ * the default red (Americas) vs orange (Africa) collapse together.
+ */
+export const REGION_COLORS_CVD: Record<Region, string> = {
+  Africa: '#e69f00', // orange
+  Americas: '#d55e00', // vermillion
+  Asia: '#cc79a7', // reddish purple
+  Europe: '#0072b2', // blue
+  Oceania: '#009e73', // bluish green
+}
+
+export const regionPalette = (cvd: boolean) =>
+  cvd ? REGION_COLORS_CVD : REGION_COLORS
+
+/**
+ * Small polygon countries (not already marker dots) that are fiddly to tap at
+ * low zoom — used to render optional click-helper dots in the interactive modes.
+ */
+export const smallCountries = countries.filter(
+  (c) => !c.needsMarker && c.id != null && c.area > 0 && c.area < 30000,
+)
+
 /** Subregions grouped by region, for the settings drill-down. */
 export const subregionsByRegion: Record<Region, string[]> = (() => {
   const map: Record<string, Set<string>> = {}
