@@ -118,13 +118,13 @@ export default function App() {
     (c: Country) => {
       // WorldMap only fires onPick for in-set, clickable countries.
       if (mode === 'explore') {
+        // Keep the current map view; selecting only changes the highlight.
         setSelected(c)
-        zoomToCountry(c)
       } else if (mode === 'guess-pick') {
         setTarget(c)
       }
     },
-    [mode, zoomToCountry],
+    [mode],
   )
 
   const onRoundComplete = useCallback(
