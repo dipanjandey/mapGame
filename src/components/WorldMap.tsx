@@ -48,8 +48,6 @@ interface WorldMapProps {
   hideReviewed: boolean
   /** Use the colour-blind-friendly region palette. */
   cvdPalette: boolean
-  /** Skip the locator-ring pulse animation. */
-  reduceMotion: boolean
   position: Position
   onPositionChange: (p: Position) => void
 }
@@ -75,7 +73,6 @@ export default function WorldMap({
   reviewedIds,
   hideReviewed,
   cvdPalette,
-  reduceMotion,
   position,
   onPositionChange,
 }: WorldMapProps) {
@@ -147,13 +144,15 @@ export default function WorldMap({
   }
 
   // The single "focused" country (open in explore/pick, or the prompted target)
-  // gets a zoom-independent pulsing ring so it's findable even at world zoom.
+  // gets a zoom-independent static crosshair so it's findable even at world zoom
+  // (the cyan outline is the highlight; this just pinpoints it — no animation).
   const focusCca3 = highlightCca3 ?? selectedCca3
   const focusCountry = focusCca3 ? byCca3[focusCca3] : null
-  const ringR = 13 / Math.sqrt(position.zoom)
-  const ringW = Math.max(0.7, 2 / Math.sqrt(position.zoom))
   const checkR = 4.6 / Math.sqrt(position.zoom)
   const helperR = 9 / Math.sqrt(position.zoom)
+  const crossArm = 11 / Math.sqrt(position.zoom)
+  const crossGap = 3.5 / Math.sqrt(position.zoom)
+  const crossW = Math.max(0.8, 1.6 / Math.sqrt(position.zoom))
 
   // Hover tooltip only appears in explore mode, and only if at least one of the
   // hover-info toggles is on.
@@ -317,31 +316,17 @@ export default function WorldMap({
               )
             })}
 
-          {/* Zoom-independent locator ring for the focused / target country. */}
+          {/* Zoom-independent static crosshair pinpointing the focused / target
+              country (the cyan outline carries the highlight; no animation). */}
           {focusCountry && (
             <Marker
               coordinates={[focusCountry.latlng[1], focusCountry.latlng[0]]}
               style={{ default: { pointerEvents: 'none' } }}
             >
-              <circle r={ringR} fill="none" stroke={FOCUS} strokeWidth={ringW} opacity={0.95}>
-                {!reduceMotion && (
-                  <>
-                    <animate
-                      attributeName="r"
-                      values={`${ringR * 0.55};${ringR};${ringR * 0.55}`}
-                      dur="1.5s"
-                      repeatCount="indefinite"
-                    />
-                    <animate
-                      attributeName="opacity"
-                      values="0.95;0.15;0.95"
-                      dur="1.5s"
-                      repeatCount="indefinite"
-                    />
-                  </>
-                )}
-              </circle>
-              <circle r={Math.max(1.1, ringW * 1.1)} fill={FOCUS} />
+              <line x1={-crossArm} y1={0} x2={-crossGap} y2={0} stroke={FOCUS} strokeWidth={crossW} strokeLinecap="round" />
+              <line x1={crossGap} y1={0} x2={crossArm} y2={0} stroke={FOCUS} strokeWidth={crossW} strokeLinecap="round" />
+              <line x1={0} y1={-crossArm} x2={0} y2={-crossGap} stroke={FOCUS} strokeWidth={crossW} strokeLinecap="round" />
+              <line x1={0} y1={crossGap} x2={0} y2={crossArm} stroke={FOCUS} strokeWidth={crossW} strokeLinecap="round" />
             </Marker>
           )}
         </ZoomableGroup>

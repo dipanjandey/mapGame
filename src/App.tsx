@@ -61,11 +61,6 @@ const isNarrowViewport = () =>
   !!window.matchMedia &&
   window.matchMedia('(max-width: 820px)').matches
 
-const prefersReducedMotion = () =>
-  typeof window !== 'undefined' &&
-  !!window.matchMedia &&
-  window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
 const homeFor = (narrow: boolean) => ({
   coordinates: HOME_CENTER,
   zoom: narrow ? 1.6 : 1,
@@ -109,7 +104,6 @@ export default function App() {
 
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [narrow] = useState(isNarrowViewport)
-  const [reduceMotion] = useState(prefersReducedMotion)
   const HOME = useMemo(() => homeFor(narrow), [narrow])
   const [position, setPosition] = useState(HOME)
 
@@ -371,7 +365,6 @@ export default function App() {
             reviewedIds={reviewed}
             hideReviewed={reviewMode && active.hideReviewed}
             cvdPalette={cvdPalette}
-            reduceMotion={reduceMotion}
             position={position}
             onPositionChange={setPosition}
           />
@@ -388,7 +381,7 @@ export default function App() {
                 ? 'Highlighted countries match your filter — click any to study it.'
                 : 'Click any country or dot to study it.'
               : mode === 'guess-prompted'
-                ? 'The ringed country is the target — name it and its capital.'
+                ? 'The cross-marked country is the target — name it and its capital.'
                 : 'Click any highlighted country or dot, then name it and its capital.'}
           </div>
         </div>

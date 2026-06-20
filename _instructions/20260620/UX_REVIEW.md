@@ -147,12 +147,14 @@ but you cannot tell from the map; same for the picked country in
 - **Fix:** draw a zoom-independent locator at the selected country's centroid — a pulsing
   ring / pin / leader-line — so "what's open" is always visible without changing the
   framing. (A gentle auto-*pan*, not zoom, is an alternative but changes current behaviour.)
-- **✅ Done:** added a zoom-independent **pulsing cyan locator ring** at the focused
+- **✅ Done:** added a zoom-independent **static cyan locator crosshair** at the focused
   country's centroid (selected in explore/pick, or the prompted target) in
   [WorldMap.tsx](../../src/components/WorldMap.tsx). Works for polygons and microstate
   dots alike. After: [explore select](./screenshots/after/after-selection-ring.png),
   [prompted target](./screenshots/after/after-prompted-gated.png), and a tiny island
   target made findable on [mobile](./screenshots/after/after-mobile.png).
+  *(2026-06-21: was a pulsing ring; switched to a static crosshair per feedback — the blink
+  was distracting. The screenshots above still show the earlier ring.)*
 
 ### ✅ B2. Selection colour collides with the region palette — **Impact: High, Effort: M — DONE**
 `#fbbf24` selected vs `#f59e0b` Africa are almost the same hue (see table). Selection is
@@ -325,8 +327,8 @@ verified with headless-Chrome screenshots in [`./screenshots/after/`](./screensh
 - **First cut:** A1, B1, B2, B3, B4, C1, C2, C7, C9.
 - **Second cut:** A2, A3, A4, A5, A6, A7, B5, B6, B7, B8, C3, C4, C5, C6, C8.
 - **Extra nice-to-haves shipped:** country search ("Jump to a country" in Explore
-  settings), "Hide reviewed" toggle, and `prefers-reduced-motion` support (the locator ring
-  skips its pulse animation when the user prefers reduced motion).
+  settings) and a "Hide reviewed" toggle. *(The locator is now a static crosshair with no
+  animation, so the earlier `prefers-reduced-motion` handling for its pulse was removed.)*
 
 Files touched across both cuts: [App.tsx](../../src/App.tsx),
 [WorldMap.tsx](../../src/components/WorldMap.tsx),

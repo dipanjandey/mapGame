@@ -9,7 +9,7 @@ Deployed on Vercel from GitHub (`main` branch auto-deploys).
 > in a fresh thread or with another agent. The original spec is
 > [`_instructions/20260619/BUILD_NOTES.md`](_instructions/20260619/BUILD_NOTES.md).
 >
-> A 2026-06-20 gameplay/UX pass (top-bar mode switcher, zoom-independent locator ring,
+> A 2026-06-20 gameplay/UX pass (top-bar mode switcher, zoom-independent locator crosshair,
 > reviewed-tracking redesign, colour-blind palette, first-run onboarding, end-of-round
 > summary, guess-question gating, skip/keyboard shortcuts, region auto-fit, country search)
 > is documented in [`_instructions/20260620/UX_REVIEW.md`](_instructions/20260620/UX_REVIEW.md).
@@ -119,9 +119,9 @@ filtered-out ones are dimmed (opacity 0.4) and inert. Mode then decides hover/co
 
 - **Explore** — study mode. Click an active country → details panel. Selecting does **not**
   recenter/zoom the map (kept stable on purpose); it only changes the highlight.
-- **Guess · prompted** — a random active country gets a light fill + a pulsing locator ring
-  and the map is masked grey (so region isn't given away); auto-zooms to it. Name it + its
-  capital. The capital question is gated behind the country answer (no spoilers).
+- **Guess · prompted** — a random active country gets a light fill + a static locator
+  crosshair and the map is masked grey (so region isn't given away); auto-zooms to it. Name
+  it + its capital. The capital question is gated behind the country answer (no spoilers).
 - **Guess · pick on map** — click an active country/dot (names hidden on hover), then name
   it + its capital.
 
@@ -200,13 +200,13 @@ counts correct only if **both** sub-answers are correct. The scoreboard is hidde
 ### Explore "track reviewed" mode (`markReviewed`)
 
 Opt-in from the explore settings. Clicking a country just **opens its details** (with the
-locator ring), so any country can be re-opened freely; the details panel carries a
+locator crosshair), so any country can be re-opened freely; the details panel carries a
 **"Mark as reviewed"** toggle. Reviewed countries **fade (dimmed) and get a cyan ✓ badge**
 so the un-reviewed ones stand out, and a **"Reviewed N / 198"** counter shows on the map.
 The reviewed set is **persisted** (`wgt.reviewed`, stored as a `string[]`, used as a `Set`);
 **"Clear reviewed (N)"** empties it. A **"Hide reviewed"** toggle (`hideReviewed`) removes
 reviewed countries from view to focus on what's left. Selection/target are encoded by an
-outline + the locator ring (never a fill swap), so nothing collides with the region colours.
+outline + the locator crosshair (never a fill swap), so nothing collides with the region colours.
 
 ## Persistence
 
