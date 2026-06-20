@@ -61,6 +61,9 @@ export interface ModeSettings {
   // Explore-only: what the hover tooltip reveals. Both default on.
   hoverName: boolean
   hoverCapital: boolean
+  // Explore-only: clicking a country marks it reviewed (white) instead of
+  // just opening details. In-memory only — not persisted across sessions.
+  markReviewed: boolean
 }
 
 export interface AppSettings {

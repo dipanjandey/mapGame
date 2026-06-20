@@ -33,6 +33,9 @@ interface WorldMapProps {
   /** Explore hover tooltip: show the country name / capital. */
   hoverName: boolean
   hoverCapital: boolean
+  /** Explore "mark reviewed" mode: reviewed countries render white. */
+  reviewMode: boolean
+  reviewedIds: Set<string>
   position: Position
   onPositionChange: (p: Position) => void
 }
@@ -40,6 +43,7 @@ interface WorldMapProps {
 const OUT_FILL = '#172033' // out-of-set: dimmed
 const MASK_FILL = '#475569' // in-set but masked (prompted)
 const STROKE = '#0f172a'
+const REVIEWED_FILL = '#f8fafc' // explore: marked-reviewed (white)
 
 export default function WorldMap({
   mode,
@@ -49,6 +53,8 @@ export default function WorldMap({
   selectedCca3,
   hoverName,
   hoverCapital,
+  reviewMode,
+  reviewedIds,
   position,
   onPositionChange,
 }: WorldMapProps) {
@@ -95,14 +101,19 @@ export default function WorldMap({
     const isTarget = c.cca3 === highlightCca3
     const isSelected = c.cca3 === selectedCca3
 
+    // Reviewed white takes priority over the selected amber so a click gives
+    // immediate white feedback; the open country is shown via its stroke.
+    const reviewed = reviewMode && reviewedIds.has(c.cca3)
+
     let fill: string
     if (!inSet) fill = OUT_FILL
+    else if (reviewed) fill = REVIEWED_FILL
     else if (isSelected) fill = '#fbbf24'
     else if (masked) fill = isTarget ? '#cbd5e1' : MASK_FILL
     else fill = REGION_COLORS[c.region]
 
     const clickable = clickEnabled && inSet
-    return { inSet, isTarget, isSelected, fill, clickable }
+    return { inSet, isTarget, isSelected, reviewed, fill, clickable }
   }
 
   // Hover tooltip only appears in explore mode, and only if at least one of
@@ -150,11 +161,15 @@ export default function WorldMap({
                     />
                   )
                 }
-                const { inSet, isTarget, isSelected, fill, clickable } = resolve(country)
+                const { inSet, isTarget, isSelected, reviewed, fill, clickable } =
+                  resolve(country)
+                // In review mode the open country is white, so mark it with an
+                // amber outline instead of fill to show which panel is open.
+                const selStroke = reviewMode && isSelected
                 const defaultStyle = {
                   fill,
-                  stroke: isTarget ? '#fff' : STROKE,
-                  strokeWidth: isTarget ? 1.3 : 0.3,
+                  stroke: isTarget ? '#fff' : selStroke ? '#fbbf24' : STROKE,
+                  strokeWidth: isTarget ? 1.3 : selStroke ? 1 : 0.3,
                   strokeDasharray: country.disputed && inSet ? '2 1.5' : undefined,
                   outline: 'none',
                   opacity: inSet ? 1 : 0.4,
@@ -174,7 +189,15 @@ export default function WorldMap({
                       // fill can't get stuck after a tap.
                       hover: canHover
                         ? {
-                            fill: clickable ? (masked ? '#94a3b8' : '#f8fafc') : fill,
+                            // Distinct hover colour in review mode so a hovered
+                            // (unreviewed) country doesn't look already-reviewed.
+                            fill: clickable
+                              ? masked
+                                ? '#94a3b8'
+                                : reviewMode && !reviewed
+                                  ? '#fcd34d'
+                                  : '#f8fafc'
+                              : fill,
                             stroke: isTarget ? '#fff' : clickable ? '#fff' : STROKE,
                             strokeWidth: clickable ? 0.5 : 0.3,
                             outline: 'none',

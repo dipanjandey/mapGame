@@ -28,6 +28,8 @@ export default function SettingsPanel({
   onChangeMode,
   onChange,
   playableCount,
+  reviewedCount,
+  onClearReviewed,
   onClose,
 }: {
   mode: GameMode
@@ -35,6 +37,8 @@ export default function SettingsPanel({
   onChangeMode: (m: GameMode) => void
   onChange: (patch: Partial<ModeSettings>) => void
   playableCount: number
+  reviewedCount: number
+  onClearReviewed: () => void
   onClose: () => void
 }) {
   const isGuess = mode !== 'explore'
@@ -154,6 +158,36 @@ export default function SettingsPanel({
               <p className="muted small" style={{ marginTop: 8 }}>
                 Hovering shows nothing — enable one to see a tooltip.
               </p>
+            )}
+          </section>
+        )}
+
+        {/* Explore-only: track which countries you've reviewed */}
+        {!isGuess && (
+          <section className="set-group">
+            <label className="set-label">Track reviewed</label>
+            <label className="switch">
+              <input
+                type="checkbox"
+                checked={settings.markReviewed}
+                onChange={(e) => onChange({ markReviewed: e.target.checked })}
+              />
+              Mark reviewed on click (turns it white)
+            </label>
+            {settings.markReviewed && (
+              <p className="muted small" style={{ marginTop: 8 }}>
+                Click a country to mark it reviewed; click again to un-mark.
+                Resets when you reload.
+              </p>
+            )}
+            {reviewedCount > 0 && (
+              <button
+                className="btn"
+                style={{ marginTop: 10 }}
+                onClick={onClearReviewed}
+              >
+                Clear reviewed ({reviewedCount})
+              </button>
             )}
           </section>
         )}

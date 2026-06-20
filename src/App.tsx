@@ -19,6 +19,7 @@ const baseMode: ModeSettings = {
   tier1Only: false,
   hoverName: true,
   hoverCapital: true,
+  markReviewed: false,
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -51,6 +52,9 @@ export default function App() {
 
   const [selected, setSelected] = useState<Country | null>(null) // explore details
   const [target, setTarget] = useState<Country | null>(null) // active guess target
+  // Reviewed countries (explore "mark reviewed" mode). In-memory only — by
+  // design this does not persist across sessions.
+  const [reviewed, setReviewed] = useState<Set<string>>(new Set())
 
   const mode = settings.mode
   // Spread over baseMode so settings persisted before a field existed (e.g.
@@ -118,14 +122,28 @@ export default function App() {
     (c: Country) => {
       // WorldMap only fires onPick for in-set, clickable countries.
       if (mode === 'explore') {
-        // Keep the current map view; selecting only changes the highlight.
-        setSelected(c)
+        if (active.markReviewed) {
+          // Toggle reviewed (white). Mark + open details; un-mark + close.
+          const isReviewed = reviewed.has(c.cca3)
+          setReviewed((prev) => {
+            const next = new Set(prev)
+            if (isReviewed) next.delete(c.cca3)
+            else next.add(c.cca3)
+            return next
+          })
+          setSelected(isReviewed ? null : c)
+        } else {
+          // Keep the current map view; selecting only changes the highlight.
+          setSelected(c)
+        }
       } else if (mode === 'guess-pick') {
         setTarget(c)
       }
     },
-    [mode],
+    [mode, active.markReviewed, reviewed],
   )
+
+  const clearReviewed = useCallback(() => setReviewed(new Set()), [])
 
   const onRoundComplete = useCallback(
     (correct: boolean) => {
@@ -236,6 +254,8 @@ export default function App() {
             }
             hoverName={active.hoverName}
             hoverCapital={active.hoverCapital}
+            reviewMode={mode === 'explore' && active.markReviewed}
+            reviewedIds={reviewed}
             position={position}
             onPositionChange={setPosition}
           />
@@ -284,6 +304,8 @@ export default function App() {
           onChangeMode={setMode}
           onChange={patchActive}
           playableCount={pool.length}
+          reviewedCount={reviewed.size}
+          onClearReviewed={clearReviewed}
           onClose={() => setSettingsOpen(false)}
         />
       )}
