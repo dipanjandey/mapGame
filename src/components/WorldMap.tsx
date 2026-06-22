@@ -52,12 +52,12 @@ interface WorldMapProps {
   onPositionChange: (p: Position) => void
 }
 
-const OUT_FILL = '#172033' // out-of-set: dimmed
-const MASK_FILL = '#475569' // in-set but masked (prompted)
+const OUT_FILL = '#0e1318' // out-of-set: dimmed (OLED-toned)
+const MASK_FILL = '#3a4654' // in-set but masked (prompted)
 const TARGET_FILL = '#cbd5e1' // prompted: the country to identify
-const STROKE = '#0f172a'
+const STROKE = '#050608'
 const HOVER_FILL = '#f8fafc' // clickable hover — the only near-white state now
-const FOCUS = '#38bdf8' // selection / target outline + locator ring (accent, off the region palette)
+const FOCUS = '#34d399' // selection / target outline + locator ring (emerald accent, off the region palette)
 const REVIEWED_DIM = 0.4 // reviewed countries fade so un-reviewed ones pop
 const HIDDEN_DIM = 0.12 // reviewed countries when "hide reviewed" is on
 
@@ -260,7 +260,7 @@ export default function WorldMap({
                 <circle
                   r={r}
                   fill={inSet ? fill : OUT_FILL}
-                  stroke={focused ? FOCUS : '#0f172a'}
+                  stroke={focused ? FOCUS : STROKE}
                   strokeWidth={focused ? 1.4 : 0.6}
                   opacity={opacity}
                 />
@@ -303,7 +303,7 @@ export default function WorldMap({
                   coordinates={[c.latlng[1], c.latlng[0]]}
                   style={{ default: { pointerEvents: 'none' } }}
                 >
-                  <circle r={checkR} fill="#0b1220" opacity={0.55} />
+                  <circle r={checkR} fill="#050608" opacity={0.6} />
                   <path
                     d={`M ${-0.42 * checkR} ${0.02 * checkR} L ${-0.1 * checkR} ${0.32 * checkR} L ${0.46 * checkR} ${-0.36 * checkR}`}
                     fill="none"

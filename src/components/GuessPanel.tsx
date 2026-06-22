@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
+import { ArrowRight } from '@phosphor-icons/react'
 import type { Country, ModeSettings } from '../lib/types'
 import { buildCountryOptions, buildCapitalOptions } from '../lib/distractors'
 import QuestionBlock, { type AnswerFormat, type QuestionResult } from './QuestionBlock'
@@ -156,7 +157,8 @@ export default function GuessPanel({
                 .join(', ')}`}
           </div>
           <button className="btn primary next-btn" onClick={onNext} autoFocus>
-            Next →
+            Next
+            <ArrowRight size={16} weight="bold" />
           </button>
         </div>
       )}

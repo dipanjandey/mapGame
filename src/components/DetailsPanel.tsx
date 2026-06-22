@@ -1,3 +1,4 @@
+import { X, CheckCircle, ArrowUpRight } from '@phosphor-icons/react'
 import type { Country } from '../lib/types'
 import { regionPalette } from '../lib/countries'
 
@@ -23,7 +24,7 @@ export default function DetailsPanel({
   return (
     <div className="details">
       <button className="details-close" onClick={onClose} aria-label="Close">
-        ×
+        <X size={18} weight="bold" />
       </button>
 
       <div className="details-head">
@@ -53,7 +54,14 @@ export default function DetailsPanel({
           className={`review-toggle${reviewed ? ' on' : ''}`}
           onClick={onToggleReviewed}
         >
-          {reviewed ? '✓ Reviewed — tap to unmark' : 'Mark as reviewed'}
+          {reviewed ? (
+            <>
+              <CheckCircle size={16} weight="fill" />
+              Reviewed — tap to unmark
+            </>
+          ) : (
+            'Mark as reviewed'
+          )}
         </button>
       )}
 
@@ -117,7 +125,8 @@ export default function DetailsPanel({
           target="_blank"
           rel="noopener noreferrer"
         >
-          Read more on Wikipedia ↗
+          Read more on Wikipedia
+          <ArrowUpRight size={15} weight="bold" />
         </a>
       )}
     </div>

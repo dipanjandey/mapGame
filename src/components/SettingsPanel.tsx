@@ -1,4 +1,16 @@
 import { useMemo, useState } from 'react'
+import {
+  X,
+  Compass,
+  MapPin,
+  ChatCircleText,
+  CheckCircle,
+  Funnel,
+  GlobeHemisphereWest,
+  ArrowCounterClockwise,
+  Trash,
+  type Icon,
+} from '@phosphor-icons/react'
 import type {
   Country,
   Difficulty,
@@ -22,6 +34,12 @@ const MODE_BLURB: Record<GameMode, string> = {
   explore: 'Click any active country to study it. Filters highlight the map.',
   'guess-prompted': 'A random active country is highlighted — name it & its capital.',
   'guess-pick': 'Click an active country, then name it & its capital.',
+}
+
+const MODE_ICON: Record<GameMode, Icon> = {
+  explore: Compass,
+  'guess-prompted': ChatCircleText,
+  'guess-pick': MapPin,
 }
 
 // Order mirrors the top-bar switcher: simplest/landing mode first.
@@ -112,22 +130,27 @@ export default function SettingsPanel({
         <div className="settings-top">
           <h2>Settings</h2>
           <button className="details-close" onClick={onClose} aria-label="Close">
-            ×
+            <X size={18} weight="bold" />
           </button>
         </div>
 
         <section className="set-group">
           <label className="set-label">Mode</label>
           <div className="seg vert">
-            {MODE_ORDER.map((m) => (
-              <button
-                key={m}
-                className={`seg-btn ${mode === m ? 'on' : ''}`}
-                onClick={() => onChangeMode(m)}
-              >
-                {MODE_LABEL[m]}
-              </button>
-            ))}
+            {MODE_ORDER.map((m) => {
+              const ModeIcon = MODE_ICON[m]
+              return (
+                <button
+                  key={m}
+                  className={`seg-btn ${mode === m ? 'on' : ''}`}
+                  onClick={() => onChangeMode(m)}
+                >
+                  <ModeIcon className="seg-icon" size={18} weight="bold" />
+                  {MODE_LABEL[m]}
+                  <CheckCircle className="seg-check" size={18} weight="fill" />
+                </button>
+              )
+            })}
           </div>
           <p className="mode-blurb">{MODE_BLURB[mode]}</p>
         </section>
@@ -187,7 +210,7 @@ export default function SettingsPanel({
                     {OPTION_VALUES.map((v) => (
                       <button
                         key={v}
-                        className={`seg-btn ${settings.countryOptions === v ? 'on' : ''}`}
+                        className={`seg-btn ${v === 0 ? '' : 'mono'} ${settings.countryOptions === v ? 'on' : ''}`}
                         onClick={() => onChange({ countryOptions: v })}
                       >
                         {v === 0 ? 'Type' : v}
@@ -202,7 +225,7 @@ export default function SettingsPanel({
                     {OPTION_VALUES.map((v) => (
                       <button
                         key={v}
-                        className={`seg-btn ${settings.capitalOptions === v ? 'on' : ''}`}
+                        className={`seg-btn ${v === 0 ? '' : 'mono'} ${settings.capitalOptions === v ? 'on' : ''}`}
                         onClick={() => onChange({ capitalOptions: v })}
                       >
                         {v === 0 ? 'Type' : v}
@@ -330,6 +353,7 @@ export default function SettingsPanel({
         {/* Shared: the filters that define the active country set (collapsible) */}
         <details className="filters" open={filtersActive}>
           <summary className="filters-summary">
+            <Funnel size={16} weight="fill" style={{ color: 'var(--accent-bright)' }} />
             <span>Filters {isGuess ? '(scope the quiz)' : '(highlight the map)'}</span>
             <span className="muted small">{filterSummary}</span>
           </summary>
@@ -402,15 +426,19 @@ export default function SettingsPanel({
         </section>
 
         <div className="playable-count">
-          {playableCount} countries active{isGuess ? ' in this quiz' : ' on the map'}
+          <GlobeHemisphereWest className="count-icon" size={20} weight="duotone" />
+          <strong>{playableCount}</strong>
+          <span>countries active{isGuess ? ' in this quiz' : ' on the map'}</span>
         </div>
 
         <div className="set-footer">
           <button className="btn" onClick={onResetMode}>
+            <ArrowCounterClockwise size={15} weight="bold" />
             Reset {MODE_LABEL[mode]} settings
           </button>
           {isGuess && (
             <button className="btn" onClick={onResetStats}>
+              <Trash size={15} weight="bold" />
               Reset score &amp; stats
             </button>
           )}

@@ -1,4 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  GlobeHemisphereWest,
+  Plus,
+  Minus,
+  ArrowsCounterClockwise,
+  GearSix,
+  Fire,
+} from '@phosphor-icons/react'
 import WorldMap from './components/WorldMap'
 import DetailsPanel from './components/DetailsPanel'
 import GuessPanel from './components/GuessPanel'
@@ -279,7 +287,7 @@ export default function App() {
       <header className="topbar">
         <div className="brand">
           <span className="globe" aria-hidden>
-            🌍
+            <GlobeHemisphereWest size={22} weight="duotone" />
           </span>
           <span className="brand-name">World Geography Trainer</span>
         </div>
@@ -309,7 +317,9 @@ export default function App() {
               <div className="stat">
                 <span className="stat-val">
                   {stats.streak}
-                  {stats.streak >= 3 && ' 🔥'}
+                  {stats.streak >= 3 && (
+                    <Fire className="flame" size={16} weight="fill" aria-hidden />
+                  )}
                 </span>
                 <span className="stat-lab">streak</span>
               </div>
@@ -328,7 +338,7 @@ export default function App() {
                 aria-label="Zoom out"
                 title="Zoom out"
               >
-                −
+                <Minus size={18} weight="bold" />
               </button>
               <button
                 className="icon-btn"
@@ -336,14 +346,16 @@ export default function App() {
                 aria-label="Zoom in"
                 title="Zoom in"
               >
-                +
+                <Plus size={18} weight="bold" />
               </button>
             </div>
             <button className="btn" onClick={() => setPosition(HOME)}>
+              <ArrowsCounterClockwise size={15} weight="bold" />
               Reset view
             </button>
             <button className="btn primary" onClick={() => setSettingsOpen(true)}>
-              ⚙ Settings
+              <GearSix size={16} weight="fill" />
+              Settings
             </button>
           </div>
         </div>
@@ -458,7 +470,14 @@ export default function App() {
       {!onboarded && (
         <div className="modal-overlay" onClick={() => setOnboarded(true)}>
           <div className="modal onboard" onClick={(e) => e.stopPropagation()}>
-            <h2>🌍 World Geography Trainer</h2>
+            <h2>
+              <GlobeHemisphereWest
+                className="modal-globe"
+                size={24}
+                weight="duotone"
+              />
+              World Geography Trainer
+            </h2>
             <p className="muted">Three ways to play — switch any time from the top bar:</p>
             <ul className="onboard-list">
               <li>
@@ -473,8 +492,9 @@ export default function App() {
                 <strong>Prompted</strong> — a country lights up; name it and its capital.
               </li>
             </ul>
-            <p className="muted small">
-              ⚙ Settings lets you filter by region, change answer formats, track what
+            <p className="muted small onboard-foot">
+              <GearSix className="gear" size={15} weight="fill" aria-hidden />
+              Settings lets you filter by region, change answer formats, track what
               you've reviewed, and more.
             </p>
             <button
